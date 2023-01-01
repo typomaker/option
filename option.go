@@ -147,14 +147,14 @@ func (o *Option[T]) UnmarshalJSON(b []byte) (err error) {
 	o.ok = true
 	return
 }
-func (o Option[T]) Value() (v sql.Value, err error) {
+func (o Option[T]) Value() (val sql.Value, err error) {
 	if !o.ok {
 		return nil, nil
 	}
-	if v, err = sql.Marshal(o.value); err != nil {
-		return v, fmt.Errorf("option: sql value from %T: %w", o.value, err)
+	if val, err = sql.Marshal(o.value); err != nil {
+		return val, fmt.Errorf("option: sql value from %T: %w", o.value, err)
 	}
-	return o.value, nil
+	return val, nil
 }
 func (o *Option[T]) Scan(src any) (err error) {
 	if src == nil {
