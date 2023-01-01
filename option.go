@@ -1,7 +1,7 @@
 package option
 
 import (
-	"database/sql/driver"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
@@ -9,67 +9,33 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+
+	"github.com/typomaker/option/internal/sql"
 )
 
 type (
-	Immutable[T any] interface {
-		driver.Valuer
-		json.Marshaler
-		// IsSome returns a true for some value
-		IsSome() (ok bool)
-		// IsNone returns a true for none value
-		IsNone() (ok bool)
-		// IsZero returns a true for none and zero
-		IsZero() (ok bool)
-		// Must returns a value for some and panics for none
-		Must() (value T)
-		// Mutable returns a value that can be changed
-		Mutable() Mutable[T]
-	}
-	Mutable[T any] interface {
-		Immutable[T]
-		// Some set as value
-		Some(v T)
-		// None set as value
-		None()
-		// Immutable returns a value that cannot be changed
-		Immutable() Immutable[T]
+	Option[T any] struct {
+		value T
+		ok    bool
 	}
 
 	Zeroable interface{ IsZero() bool }
 	Someable interface{ IsSome() bool }
 	Noneable interface{ IsNone() bool }
-
-	none[T any]  struct{}
-	some[T any]  struct{ v T }
-	every[T any] struct{ o Immutable[T] }
 )
 
 var (
-	_ Immutable[any] = (*none[any])(nil)
-	_ Immutable[any] = (*some[any])(nil)
-	_ Mutable[any]   = (*every[any])(nil)
-
 	_, b, _, _ = runtime.Caller(0)
 	basepath   = filepath.Dir(b)
 )
 
-func (e *every[T]) Some(v T) {
-	e.o = Some(v)
+func Some[T any](v T) Option[T] {
+	return Option[T]{value: v, ok: true}
 }
-func Some[T any](v T) Immutable[T] {
-	return some[T]{v}
+func None[T any]() Option[T] {
+	return Option[T]{}
 }
-func (e *every[T]) None() {
-	e.o = None[T]()
-}
-func None[T any]() Immutable[T] {
-	return none[T]{}
-}
-func Every[T any](o Immutable[T]) Mutable[T] {
-	return &every[T]{o}
-}
-func Wrap[T any](v T) Immutable[T] {
+func Wrap[T any](v T) Option[T] {
 	r := reflect.ValueOf(v)
 	if !r.IsValid() {
 		return None[T]()
@@ -84,55 +50,57 @@ func Wrap[T any](v T) Immutable[T] {
 		return Some(v)
 	}
 }
-func Unwrap[T any](o Immutable[T]) (v T) {
-	if o.IsSome() {
-		v = o.Must()
+func Unwrap[T any](o Option[T]) (v T) {
+	if o.ok {
+		return o.value
 	}
 	return v
 }
-func (e every[T]) IsSome() bool {
-	return e.o.IsSome()
+func SomeOf[T any](oo ...Option[T]) (o Option[T]) {
+	for _, o = range oo {
+		if o.ok {
+			break
+		}
+	}
+	return o
 }
-func (none[T]) IsSome() bool {
-	return false
+
+// IsNone returns a true if value is some
+func (o Option[T]) IsSome() bool {
+	return o.ok
 }
-func (some[T]) IsSome() bool {
-	return true
-}
-func IsSome(v ...any) bool {
+
+// IsSome returns a true for some value
+func IsSome(v ...Someable) bool {
 	for i := range v {
-		if someable, ok := v[i].(Someable); ok && !someable.IsSome() {
+		if !v[i].IsSome() {
 			return false
 		}
 	}
 	return true
 }
-func (e every[T]) IsNone() bool {
-	return e.o.IsNone()
+
+// IsNone returns a true if value is none
+func (o Option[T]) IsNone() bool {
+	return !o.ok
 }
-func (none[T]) IsNone() bool {
-	return true
-}
-func (some[T]) IsNone() bool {
-	return false
-}
-func IsNone(v ...any) bool {
+
+// IsNone returns a true for none value
+func IsNone(v ...Noneable) bool {
 	for i := range v {
-		if noneable, ok := v[i].(Noneable); ok && !noneable.IsNone() {
+		if !v[i].IsNone() {
 			return false
 		}
 	}
 	return true
 }
-func (e every[T]) IsZero() bool {
-	return e.o.IsZero()
+
+// IsZero returns a true if value is zero
+func (o Option[T]) IsZero() bool {
+	return IsZero(o.value)
 }
-func (none[T]) IsZero() bool {
-	return true
-}
-func (o some[T]) IsZero() bool {
-	return IsZero(o.v)
-}
+
+// IsZero returns a true for none and zero
 func IsZero(v ...any) bool {
 	for i := range v {
 		if zeroable, ok := v[i].(Zeroable); ok && zeroable.IsZero() {
@@ -145,59 +113,57 @@ func IsZero(v ...any) bool {
 	}
 	return false
 }
-func (e every[T]) Must() T {
-	return e.o.Must()
-}
-func (o none[T]) Must() T {
-	var caller string
-	if _, file, line, ok := runtime.Caller(1); ok {
-		file = strings.Replace(file, basepath, "", 1)
-		caller = file + ":" + strconv.Itoa(line)
+
+// Get returns a value for some and panics for none
+func (o Option[T]) Get() T {
+	if !o.ok {
+		var caller string
+		if _, file, line, ok := runtime.Caller(1); ok {
+			file = strings.Replace(file, basepath, "", 1)
+			caller = file + ":" + strconv.Itoa(line)
+		}
+		panic(fmt.Errorf("option: %T is none in %s", o, caller))
 	}
-	panic(fmt.Errorf("option: %T is none in %s", o, caller))
+	return o.value
 }
-func (o some[T]) Must() T {
-	return o.v
-}
-func (e every[T]) MarshalJSON() (b []byte, err error) {
-	return e.o.MarshalJSON()
-}
-func (none[T]) MarshalJSON() (b []byte, err error) {
-	return []byte("null"), nil
-}
-func (o some[T]) MarshalJSON() (b []byte, err error) {
-	return json.Marshal(o.v)
-}
-func (e every[T]) Value() (driver.Value, error) {
-	return e.o.Value()
-}
-func (o none[T]) Value() (driver.Value, error) {
-	return nil, nil
-}
-func (o some[T]) Value() (driver.Value, error) {
-	if vo, ok := any(o.v).(driver.Valuer); ok {
-		return vo.Value()
-	}
-	return o.v, nil
-}
-func (e every[T]) Immutable() Immutable[T] {
-	return e.o
-}
-func (e *every[T]) Mutable() Mutable[T] {
-	return e
-}
-func (e some[T]) Mutable() Mutable[T] {
-	return Every[T](e)
-}
-func (e none[T]) Mutable() Mutable[T] {
-	return Every[T](e)
+func (o *Option[T]) Set(v T) {
+	o.ok = true
+	o.value = v
 }
 
-func SomeOf[T any](oo ...Immutable[T]) (o Immutable[T]) {
-	for _, o = range oo {
-		if o.IsSome() {
-			break
-		}
+func (o Option[T]) MarshalJSON() (b []byte, err error) {
+	if !o.ok {
+		return json.Marshal(nil)
 	}
-	return o
+	return json.Marshal(o.value)
+}
+func (o *Option[T]) UnmarshalJSON(b []byte) (err error) {
+	if b == nil || bytes.Equal(b, []byte("null")) {
+		return
+	}
+	if err = json.Unmarshal(b, &o.value); err != nil {
+		return
+	}
+	o.ok = true
+	return
+}
+func (o Option[T]) Value() (v sql.Value, err error) {
+	if !o.ok {
+		return nil, nil
+	}
+	if v, err = sql.Marshal(o.value); err != nil {
+		return v, fmt.Errorf("option: sql value from %T: %w", o.value, err)
+	}
+	return o.value, nil
+}
+func (o *Option[T]) Scan(src any) (err error) {
+	if src == nil {
+		*o = Option[T]{}
+		return nil
+	}
+	if err = sql.Unmarshal(src, &o.value); err != nil {
+		return fmt.Errorf("option: scan from %T to %T: %w", src, o.value, err)
+	}
+	o.ok = true
+	return
 }

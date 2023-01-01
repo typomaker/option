@@ -1,6 +1,9 @@
 package option_test
 
 import (
+	"database/sql"
+	"database/sql/driver"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -8,24 +11,30 @@ import (
 	"github.com/typomaker/option"
 )
 
+func TestCompatible(t *testing.T) {
+	require.Implements(t, (*json.Unmarshaler)(nil), &option.Option[any]{})
+	require.Implements(t, (*json.Marshaler)(nil), &option.Option[any]{})
+	require.Implements(t, (*driver.Valuer)(nil), &option.Option[any]{})
+	require.Implements(t, (*sql.Scanner)(nil), &option.Option[any]{})
+}
 func TestMust(t *testing.T) {
 	t.Run("none", func(t *testing.T) {
 		var o = option.None[int]()
-		require.PanicsWithError(t, "option: option.none[int] is none in /option_test.go:15", func() {
-			o.Must()
+		require.PanicsWithError(t, "option: option.Option[int] is none in /option_test.go:24", func() {
+			o.Get()
 		})
 	})
 	t.Run("some", func(t *testing.T) {
 		var o = option.Some(1)
 		require.NotPanics(t, func() {
-			o.Must()
+			o.Get()
 		})
-		require.Equal(t, 1, o.Must())
+		require.Equal(t, 1, o.Get())
 	})
 }
 func TestIsNone(t *testing.T) {
 	t.Run("true", func(t *testing.T) {
-		var vv []any = []any{
+		var vv = []option.Noneable{
 			option.None[any](),
 			option.None[any](),
 			option.None[any](),
@@ -33,7 +42,7 @@ func TestIsNone(t *testing.T) {
 		require.True(t, option.IsNone(vv...))
 	})
 	t.Run("false", func(t *testing.T) {
-		var vv []any = []any{
+		var vv = []option.Noneable{
 			option.None[any](),
 			option.None[any](),
 			option.Some[any](1),
@@ -43,7 +52,7 @@ func TestIsNone(t *testing.T) {
 }
 func TestIsSome(t *testing.T) {
 	t.Run("true", func(t *testing.T) {
-		var vv []any = []any{
+		var vv = []option.Someable{
 			option.Some[any](1),
 			option.Some[any](""),
 			option.Some[any](false),
@@ -51,7 +60,7 @@ func TestIsSome(t *testing.T) {
 		require.True(t, option.IsSome(vv...))
 	})
 	t.Run("false", func(t *testing.T) {
-		var vv []any = []any{
+		var vv = []option.Someable{
 			option.Some[any](0),
 			option.Some[any](""),
 			option.None[any](),
@@ -104,7 +113,7 @@ func TestWrap(t *testing.T) {
 }
 func TestSomeOf(t *testing.T) {
 	t.Run("none", func(t *testing.T) {
-		var vv = []option.Immutable[any]{
+		var vv = []option.Option[any]{
 			option.None[any](),
 			option.None[any](),
 			option.None[any](),
@@ -112,22 +121,22 @@ func TestSomeOf(t *testing.T) {
 		require.True(t, option.SomeOf(vv...).IsNone())
 	})
 	t.Run("first", func(t *testing.T) {
-		var vv = []option.Immutable[any]{
+		var vv = []option.Option[any]{
 			option.Some[any](1),
 			option.Some[any](2),
 			option.Some[any](3),
 		}
 		require.True(t, option.SomeOf(vv...).IsSome())
-		require.Equal(t, 1, option.SomeOf(vv...).Must())
+		require.Equal(t, 1, option.SomeOf(vv...).Get())
 	})
 	t.Run("last", func(t *testing.T) {
-		var vv = []option.Immutable[any]{
+		var vv = []option.Option[any]{
 			option.None[any](),
 			option.None[any](),
 			option.Some[any](3),
 		}
 		require.True(t, option.SomeOf(vv...).IsSome())
-		require.Equal(t, 3, option.SomeOf(vv...).Must())
+		require.Equal(t, 3, option.SomeOf(vv...).Get())
 	})
 }
 
