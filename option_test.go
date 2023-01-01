@@ -139,6 +139,34 @@ func TestSomeOf(t *testing.T) {
 		require.Equal(t, 3, option.SomeOf(vv...).Get())
 	})
 }
+func TestJSON(t *testing.T) {
+	t.Run("marshal none", func(t *testing.T) {
+		var o = option.None[int]()
+		var b, err = o.MarshalJSON()
+		require.NoError(t, err)
+		require.Equal(t, []byte("null"), b)
+	})
+	t.Run("marshal some", func(t *testing.T) {
+		var o = option.Some(1)
+		var b, err = o.MarshalJSON()
+		require.NoError(t, err)
+		require.Equal(t, []byte("1"), b)
+	})
+	t.Run("unmarshal none", func(t *testing.T) {
+		var o option.Option[int]
+		var err = o.UnmarshalJSON([]byte("null"))
+		require.NoError(t, err)
+		require.True(t, o.IsNone())
+		require.True(t, o.IsZero())
+	})
+	t.Run("unmarshal some", func(t *testing.T) {
+		var o option.Option[int]
+		var err = o.UnmarshalJSON([]byte("1"))
+		require.NoError(t, err)
+		require.True(t, o.IsSome())
+		require.Equal(t, 1, o.Get())
+	})
+}
 
 // func TestDDD(t *testing.T) {
 // 	var o = option.Some(0)
