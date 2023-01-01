@@ -204,6 +204,8 @@ func Unmarshal(dbval Value, goval any) (err error) {
 			*ref = src
 			return
 		}
+	default:
+		err = fmt.Errorf("sql: unmarshal unsupport from %T", src)
 	}
 	return err
 }

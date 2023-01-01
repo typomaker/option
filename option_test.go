@@ -167,3 +167,31 @@ func TestJSON(t *testing.T) {
 		require.Equal(t, 1, o.Get())
 	})
 }
+func TestSQL(t *testing.T) {
+	t.Run("marshal none", func(t *testing.T) {
+		var o = option.None[int]()
+		var b, err = o.Value()
+		require.NoError(t, err)
+		require.Equal(t, nil, b)
+	})
+	t.Run("marshal some", func(t *testing.T) {
+		var o = option.Some(1)
+		var b, err = o.Value()
+		require.NoError(t, err)
+		require.Equal(t, 1, b)
+	})
+	t.Run("unmarshal none", func(t *testing.T) {
+		var o option.Option[int]
+		var err = o.Scan(nil)
+		require.NoError(t, err)
+		require.True(t, o.IsNone())
+		require.True(t, o.IsZero())
+	})
+	t.Run("unmarshal some", func(t *testing.T) {
+		var o option.Option[int]
+		var err = o.Scan(int64(1))
+		require.NoError(t, err)
+		require.True(t, o.IsSome())
+		require.Equal(t, 1, o.Get())
+	})
+}
