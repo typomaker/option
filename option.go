@@ -19,9 +19,10 @@ type (
 		ok    bool
 	}
 
-	Zeroable interface{ IsZero() bool }
-	Someable interface{ IsSome() bool }
-	Noneable interface{ IsNone() bool }
+	Zeroable   interface{ IsZero() bool }
+	Someable   interface{ IsSome() bool }
+	Noneable   interface{ IsNone() bool }
+	Interfacer interface{ Interface() Option[any] }
 )
 
 var (
@@ -35,21 +36,21 @@ func Some[T any](v T) Option[T] {
 func None[T any]() Option[T] {
 	return Option[T]{}
 }
+
+// Wrap returns none for nilled value, otherwise some.
 func Wrap[T any](v T) Option[T] {
-	r := reflect.ValueOf(v)
-	if !r.IsValid() {
+	switch r := reflect.ValueOf(v); r.Kind() {
+	case reflect.Invalid:
 		return None[T]()
-	}
-	switch r.Kind() {
-	case reflect.Pointer, reflect.UnsafePointer:
+	case reflect.Pointer:
 		if r.IsNil() {
 			return None[T]()
 		}
-		return Some(v)
-	default:
-		return Some(v)
 	}
+	return Some(v)
 }
+
+// Unwrap returns value of some, otherwise zero value.
 func Unwrap[T any](o Option[T]) (v T) {
 	if o.ok {
 		return o.value
@@ -66,14 +67,14 @@ func SomeOf[T any](oo ...Option[T]) (o Option[T]) {
 }
 
 // IsNone returns a true if value is some
-func (o Option[T]) IsSome() bool {
+func (o Option[T]) IsSome() (ok bool) {
 	return o.ok
 }
 
 // IsSome returns a true for some value
-func IsSome(v ...Someable) bool {
-	for i := range v {
-		if !v[i].IsSome() {
+func IsSome(ss ...Someable) (ok bool) {
+	for i := range ss {
+		if !ss[i].IsSome() {
 			return false
 		}
 	}
@@ -81,14 +82,14 @@ func IsSome(v ...Someable) bool {
 }
 
 // IsNone returns a true if value is none
-func (o Option[T]) IsNone() bool {
+func (o Option[T]) IsNone() (ok bool) {
 	return !o.ok
 }
 
 // IsNone returns a true for none value
-func IsNone(v ...Noneable) bool {
-	for i := range v {
-		if !v[i].IsNone() {
+func IsNone(nn ...Noneable) (ok bool) {
+	for i := range nn {
+		if !nn[i].IsNone() {
 			return false
 		}
 	}
@@ -96,22 +97,24 @@ func IsNone(v ...Noneable) bool {
 }
 
 // IsZero returns a true if value is zero
-func (o Option[T]) IsZero() bool {
-	return IsZero(o.value)
+func (o Option[T]) IsZero() (ok bool) {
+	if !o.ok {
+		return true
+	}
+	if r := reflect.ValueOf(o.value); !r.IsValid() || r.IsZero() {
+		return true
+	}
+	return false
 }
 
 // IsZero returns a true for none and zero
-func IsZero(v ...any) bool {
-	for i := range v {
-		if zeroable, ok := v[i].(Zeroable); ok && zeroable.IsZero() {
-			return true
-		}
-		r := reflect.ValueOf(v[i])
-		if !r.IsValid() || r.IsZero() {
-			return true
+func IsZero(zz ...Zeroable) (ok bool) {
+	for i := range zz {
+		if !zz[i].IsZero() {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 // Get returns a value for some and panics for none
@@ -152,7 +155,7 @@ func (o Option[T]) Value() (val sql.Value, err error) {
 		return nil, nil
 	}
 	if val, err = sql.Marshal(o.value); err != nil {
-		return val, fmt.Errorf("option: sql value from %T: %w", o.value, err)
+		return val, fmt.Errorf("option: value from %T: %w", o.value, err)
 	}
 	return val, nil
 }

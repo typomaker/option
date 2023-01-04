@@ -17,7 +17,7 @@ func TestCompatible(t *testing.T) {
 	require.Implements(t, (*driver.Valuer)(nil), &option.Option[any]{})
 	require.Implements(t, (*sql.Scanner)(nil), &option.Option[any]{})
 }
-func TestMust(t *testing.T) {
+func TestGet(t *testing.T) {
 	t.Run("none", func(t *testing.T) {
 		var o = option.None[int]()
 		require.PanicsWithError(t, "option: option.Option[int] is none in /option_test.go:24", func() {
@@ -31,6 +31,15 @@ func TestMust(t *testing.T) {
 		})
 		require.Equal(t, 1, o.Get())
 	})
+}
+func TestSet(t *testing.T) {
+	var o = option.None[int]()
+	o.Set(0)
+	require.True(t, o.IsSome())
+	require.False(t, o.IsNone())
+	require.True(t, o.IsZero())
+	require.Equal(t, 0, o.Get())
+
 }
 func TestIsNone(t *testing.T) {
 	t.Run("true", func(t *testing.T) {
@@ -96,18 +105,18 @@ func TestWrap(t *testing.T) {
 	}
 	for i := range x {
 		var o = option.Wrap(x[i].value)
-		require.Equal(t, x[i].some, o.IsSome(), "%d IsSome(%#v)", i, x[i].value)
-		require.Equal(t, x[i].none, o.IsNone(), "%d IsNone(%#v)", i, x[i].value)
-		require.Equal(t, x[i].zero, o.IsZero(), "%d IsZero(%#v)", i, x[i].value)
+		require.Equal(t, x[i].some, o.IsSome(), "%d Wrap(%#v).IsSome()", i, x[i].value)
+		require.Equal(t, x[i].none, o.IsNone(), "%d Wrap(%#v)..IsNone()", i, x[i].value)
+		require.Equal(t, x[i].zero, o.IsZero(), "%d Wrap(%#v)..IsZero()", i, x[i].value)
 
-		require.Equal(t, x[i].some, option.IsSome(o), "%d IsSome(%#v)", i, x[i].value)
-		require.Equal(t, x[i].none, option.IsNone(o), "%d IsNone(%#v)", i, x[i].value)
-		require.Equal(t, x[i].zero, option.IsZero(o), "%d IsZero(%#v)", i, x[i].value)
+		require.Equal(t, x[i].some, option.IsSome(o), "%d option.IsSome(%#v)", i, o)
+		require.Equal(t, x[i].none, option.IsNone(o), "%d option.IsNone(%#v)", i, o)
+		require.Equal(t, x[i].zero, option.IsZero(o), "%d option.IsZero(%#v)", i, o)
 
 		if x[i].none {
-			require.Empty(t, option.Unwrap(o), "%d %#v == Unwrap(%#v)", i, x[i].value, o)
+			require.Empty(t, option.Unwrap(o), "%d %#v == option.Unwrap(%#v)", i, x[i].value, o)
 		} else {
-			require.EqualValues(t, x[i].value, option.Unwrap(o), "%d %#v == Unwrap(%#v)", i, x[i].value, o)
+			require.EqualValues(t, x[i].value, option.Unwrap(o), "%d %#v == option.Unwrap(%#v)", i, x[i].value, o)
 		}
 	}
 }
