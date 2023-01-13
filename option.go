@@ -22,6 +22,9 @@ type (
 	Zeroable interface{ IsZero() bool }
 	Someable interface{ IsSome() bool }
 	Noneable interface{ IsNone() bool }
+	Anyer    interface {
+		Any() Option[any]
+	}
 )
 
 var (
@@ -125,9 +128,9 @@ func IsZero(zz ...Zeroable) (ok bool) {
 	return true
 }
 
-// Get returns a value for some and panics for none
+// Get returns a value for some and panics for none if the nested type isn't implement the Anyer interface
 func (o Option[T]) Get() T {
-	if !o.ok {
+	if _, ok := any(o.value).(Anyer); !ok && !o.ok {
 		var caller string
 		if _, file, line, ok := runtime.Caller(1); ok {
 			file = strings.Replace(file, basepath, "", 1)
@@ -145,6 +148,9 @@ func (o *Option[T]) Set(v T) {
 }
 func (o *Option[T]) SetSome(fallback T) {
 	*o = One(*o, Some(fallback))
+}
+func (o Option[T]) Any() Option[any] {
+	return Option[any]{value: o.value, ok: o.ok}
 }
 func (o Option[T]) MarshalJSON() (b []byte, err error) {
 	if !o.ok {

@@ -31,6 +31,13 @@ func TestGet(t *testing.T) {
 		})
 		require.Equal(t, 1, o.Get())
 	})
+	t.Run("nested", func(t *testing.T) {
+		var c = option.None[option.Option[option.Option[int]]]()
+		require.NotPanics(t, func() {
+			c.Get().Get().GetSome(1)
+		})
+		require.Equal(t, 1, c.Get().Get().GetSome(1))
+	})
 }
 func TestSet(t *testing.T) {
 	var o = option.None[int]()
@@ -264,6 +271,14 @@ func TestSQL(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 1, b)
 	})
+	t.Run("masrshal nested some", func(t *testing.T) {
+		var a = option.Some(1)
+		var b = option.Some(a)
+		var c = option.Some(b)
+		var x, err = c.Value()
+		require.NoError(t, err)
+		require.Equal(t, 1, x)
+	})
 	t.Run("unmarshal none", func(t *testing.T) {
 		var o option.Option[int]
 		var err = o.Scan(nil)
@@ -277,5 +292,25 @@ func TestSQL(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, o.IsSome())
 		require.Equal(t, 1, o.Get())
+	})
+	t.Run("unmarshal nested some", func(t *testing.T) {
+		var a = option.None[int]()
+		var b = option.Some(a)
+		var c = option.Some(b)
+		var err = c.Scan(int64(1))
+		require.NoError(t, err)
+		require.True(t, c.IsSome())
+		require.True(t, c.Get().IsSome())
+		require.True(t, c.Get().Get().IsSome())
+		require.Equal(t, 1, c.Get().Get().Get())
+	})
+}
+func TestAny(t *testing.T) {
+	t.Run("some", func(t *testing.T) {
+		require.True(t, option.Some(1).Any().IsSome())
+		require.Equal(t, 1, option.Some(1).Any().Get())
+	})
+	t.Run("none", func(t *testing.T) {
+		require.True(t, option.None[int]().Any().IsNone())
 	})
 }
