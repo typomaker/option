@@ -1,6 +1,7 @@
 package sql_test
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -284,5 +285,23 @@ func TestUnmarshal(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Equal(t, src, dst)
+	})
+	t.Run("float64 to float64", func(t *testing.T) {
+		var src, dst = float64(1), float64(0)
+		var err = sql.Unmarshal(src, &dst)
+		require.NoError(t, err)
+		require.Equal(t, float64(1), dst)
+	})
+	t.Run("float64 to float32", func(t *testing.T) {
+		var src, dst = float64(math.MaxFloat32), float32(0)
+		var err = sql.Unmarshal(src, &dst)
+		require.NoError(t, err)
+		require.Equal(t, float32(math.MaxFloat32), dst)
+	})
+	t.Run("float64 to string", func(t *testing.T) {
+		var src, dst = float64(1.111111111111), string("")
+		var err = sql.Unmarshal(src, &dst)
+		require.NoError(t, err)
+		require.Equal(t, string("1.111111111111"), dst)
 	})
 }

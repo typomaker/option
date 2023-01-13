@@ -23,21 +23,21 @@ func Marshal(goval any) (dbval Value, err error) {
 	return goval, nil
 }
 
-func Unmarshal(dbval Value, goval any) (err error) {
-	if xdst, ok := goval.(Scanner); ok {
-		return xdst.Scan(dbval)
+func Unmarshal(srcval Value, dstval any) (err error) {
+	if xdst, ok := dstval.(Scanner); ok {
+		return xdst.Scan(srcval)
 	}
 
-	rv := reflect.ValueOf(goval)
+	rv := reflect.ValueOf(dstval)
 	if rv.Kind() != reflect.Pointer || rv.IsNil() {
 		return fmt.Errorf("sql: goval must be non-nil pointer")
 	}
 	var f64 float64
 	var i64 int64
 	var i64u uint64
-	switch src := dbval.(type) {
+	switch src := srcval.(type) {
 	case bool:
-		switch ref := goval.(type) {
+		switch ref := dstval.(type) {
 		case *bool:
 			*ref = src
 			return
@@ -106,55 +106,68 @@ func Unmarshal(dbval Value, goval any) (err error) {
 			return
 		}
 	case string:
-		switch ref := any(goval).(type) {
+		switch ref := any(dstval).(type) {
 		case *string:
 			*ref = src
 			return
 		case *int:
 			*ref, err = strconv.Atoi(src)
+			return
 		case *int8:
 			if i64, err = strconv.ParseInt(src, 10, 8); err == nil {
 				*ref = int8(i64)
 			}
+			return
 		case *int16:
 			if i64, err = strconv.ParseInt(src, 10, 16); err == nil {
 				*ref = int16(i64)
 			}
+			return
 		case *int32:
 			if i64, err = strconv.ParseInt(src, 10, 32); err == nil {
 				*ref = int32(i64)
 			}
+			return
 		case *int64:
 			*ref, err = strconv.ParseInt(src, 10, 64)
+			return
 		case *uint:
 			if i64u, err = strconv.ParseUint(src, 10, 32); err == nil {
 				*ref = uint(i64u)
 			}
+			return
 		case *uint8:
 			if i64u, err = strconv.ParseUint(src, 10, 8); err == nil {
 				*ref = uint8(i64u)
 			}
+			return
 		case *uint16:
 			if i64u, err = strconv.ParseUint(src, 10, 16); err == nil {
 				*ref = uint16(i64u)
 			}
+			return
 		case *uint32:
 			if i64u, err = strconv.ParseUint(src, 10, 32); err == nil {
 				*ref = uint32(i64u)
 			}
+			return
 		case *uint64:
 			*ref, err = strconv.ParseUint(src, 10, 64)
+			return
 		case *float32:
 			if f64, err = strconv.ParseFloat(src, 64); err == nil {
 				*ref = float32(f64)
 			}
+			return
 		case *float64:
 			*ref, err = strconv.ParseFloat(src, 64)
+			return
 		case *time.Duration:
 			*ref, err = time.ParseDuration(src)
+			return
 		}
 	case int64:
-		switch ref := any(goval).(type) {
+		switch ref := any(dstval).(type) {
 		case *int:
 			*ref = int(src)
 			return
@@ -187,16 +200,31 @@ func Unmarshal(dbval Value, goval any) (err error) {
 			return
 		}
 	case []byte:
-		switch ref := any(goval).(type) {
+		switch ref := any(dstval).(type) {
 		case encoding.BinaryUnmarshaler:
 			err = ref.UnmarshalBinary(src)
+			return
 		case *[]byte:
 			*ref = src
+			return
 		case *string:
 			*ref = string(src)
+			return
+		}
+	case float64:
+		switch ref := any(dstval).(type) {
+		case *float64:
+			*ref = src
+			return
+		case *float32:
+			*ref = float32(src)
+			return
+		case *string:
+			*ref = strconv.FormatFloat(src, 'f', -1, 64)
+			return
 		}
 	case time.Time:
-		switch ref := any(goval).(type) {
+		switch ref := any(dstval).(type) {
 		case *string:
 			*ref = src.Format(time.RFC3339)
 			return
@@ -204,8 +232,7 @@ func Unmarshal(dbval Value, goval any) (err error) {
 			*ref = src
 			return
 		}
-	default:
-		err = fmt.Errorf("sql: unmarshal unsupport from %T", src)
 	}
-	return err
+	err = fmt.Errorf("sql: unmarshal from %T to %T is not implemented", srcval, dstval)
+	return
 }
