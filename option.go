@@ -19,10 +19,9 @@ type (
 		ok    bool
 	}
 
-	Zeroable   interface{ IsZero() bool }
-	Someable   interface{ IsSome() bool }
-	Noneable   interface{ IsNone() bool }
-	Interfacer interface{ Interface() Option[any] }
+	Zeroable interface{ IsZero() bool }
+	Someable interface{ IsSome() bool }
+	Noneable interface{ IsNone() bool }
 )
 
 var (
