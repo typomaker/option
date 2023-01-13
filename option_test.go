@@ -41,6 +41,26 @@ func TestSet(t *testing.T) {
 	require.Equal(t, 0, o.Get())
 
 }
+func TestGetSome(t *testing.T) {
+	t.Run("none", func(t *testing.T) {
+		require.Equal(t, 1, option.None[int]().GetSome(1))
+	})
+	t.Run("some", func(t *testing.T) {
+		require.Equal(t, 1, option.Some(1).GetSome(2))
+	})
+}
+func TestSetSome(t *testing.T) {
+	t.Run("none", func(t *testing.T) {
+		var o = option.None[int]()
+		o.SetSome(1)
+		require.Equal(t, 1, o.Get())
+	})
+	t.Run("some", func(t *testing.T) {
+		var o = option.Some(1)
+		o.SetSome(2)
+		require.Equal(t, 1, o.Get())
+	})
+}
 func TestIsNone(t *testing.T) {
 	t.Run("true", func(t *testing.T) {
 		var vv = []option.Noneable{
@@ -120,14 +140,14 @@ func TestWrap(t *testing.T) {
 		}
 	}
 }
-func TestSomeOf(t *testing.T) {
+func TestOne(t *testing.T) {
 	t.Run("none", func(t *testing.T) {
 		var vv = []option.Option[any]{
 			option.None[any](),
 			option.None[any](),
 			option.None[any](),
 		}
-		require.True(t, option.SomeOf(vv...).IsNone())
+		require.True(t, option.One(vv...).IsNone())
 	})
 	t.Run("first", func(t *testing.T) {
 		var vv = []option.Option[any]{
@@ -135,8 +155,8 @@ func TestSomeOf(t *testing.T) {
 			option.Some[any](2),
 			option.Some[any](3),
 		}
-		require.True(t, option.SomeOf(vv...).IsSome())
-		require.Equal(t, 1, option.SomeOf(vv...).Get())
+		require.True(t, option.One(vv...).IsSome())
+		require.Equal(t, 1, option.One(vv...).Get())
 	})
 	t.Run("last", func(t *testing.T) {
 		var vv = []option.Option[any]{
@@ -144,8 +164,63 @@ func TestSomeOf(t *testing.T) {
 			option.None[any](),
 			option.Some[any](3),
 		}
-		require.True(t, option.SomeOf(vv...).IsSome())
-		require.Equal(t, 3, option.SomeOf(vv...).Get())
+		require.True(t, option.One(vv...).IsSome())
+		require.Equal(t, 3, option.One(vv...).Get())
+	})
+}
+func TestAll(t *testing.T) {
+	t.Run("none", func(t *testing.T) {
+		var vv = []option.Option[any]{
+			option.None[any](),
+			option.None[any](),
+			option.None[any](),
+		}
+		require.Empty(t, option.All(vv...))
+	})
+	t.Run("all", func(t *testing.T) {
+		var vv = []option.Option[any]{
+			option.Some[any](1),
+			option.Some[any](2),
+			option.Some[any](3),
+		}
+		require.Len(t, option.All(vv...), len(vv))
+	})
+	t.Run("first", func(t *testing.T) {
+		var vv = []option.Option[any]{
+			option.Some[any](1),
+			option.None[any](),
+			option.None[any](),
+		}
+		require.Len(t, option.All(vv...), 1)
+		require.Equal(t, 1, option.All(vv...)[0].Get())
+	})
+	t.Run("middle", func(t *testing.T) {
+		var vv = []option.Option[any]{
+			option.None[any](),
+			option.Some[any](2),
+			option.None[any](),
+		}
+		require.Len(t, option.All(vv...), 1)
+		require.Equal(t, 2, option.All(vv...)[0].Get())
+	})
+	t.Run("last", func(t *testing.T) {
+		var vv = []option.Option[any]{
+			option.None[any](),
+			option.None[any](),
+			option.Some[any](3),
+		}
+		require.Len(t, option.All(vv...), 1)
+		require.Equal(t, 3, option.All(vv...)[0].Get())
+	})
+	t.Run("order", func(t *testing.T) {
+		var vv = []option.Option[any]{
+			option.Some[any](1),
+			option.None[any](),
+			option.Some[any](3),
+		}
+		require.Len(t, option.All(vv...), 2)
+		require.Equal(t, 1, option.All(vv...)[0].Get())
+		require.Equal(t, 3, option.All(vv...)[1].Get())
 	})
 }
 func TestJSON(t *testing.T) {

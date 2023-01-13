@@ -56,13 +56,22 @@ func Unwrap[T any](o Option[T]) (v T) {
 	}
 	return v
 }
-func SomeOf[T any](oo ...Option[T]) (o Option[T]) {
+func One[T any](oo ...Option[T]) (o Option[T]) {
 	for _, o = range oo {
 		if o.ok {
 			break
 		}
 	}
 	return o
+}
+func All[T any](oo ...Option[T]) []Option[T] {
+	for i := 0; i < len(oo); i++ {
+		if !oo[i].ok {
+			oo = append(oo[:i], oo[i+1:]...)
+			i--
+		}
+	}
+	return oo
 }
 
 // IsNone returns a true if value is some
@@ -128,11 +137,15 @@ func (o Option[T]) Get() T {
 	}
 	return o.value
 }
-func (o *Option[T]) Set(v T) {
-	o.ok = true
-	o.value = v
+func (o Option[T]) GetSome(fallback T) T {
+	return One(o, Some(fallback)).Get()
 }
-
+func (o *Option[T]) Set(v T) {
+	o.value, o.ok = v, true
+}
+func (o *Option[T]) SetSome(fallback T) {
+	*o = One(*o, Some(fallback))
+}
 func (o Option[T]) MarshalJSON() (b []byte, err error) {
 	if !o.ok {
 		return json.Marshal(nil)
