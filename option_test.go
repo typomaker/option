@@ -31,12 +31,31 @@ func TestGet(t *testing.T) {
 		})
 		require.Equal(t, 1, o.Get())
 	})
-	t.Run("nested", func(t *testing.T) {
-		var c = option.None[option.Option[option.Option[int]]]()
-		require.NotPanics(t, func() {
-			c.Get().Get().GetSome(1)
-		})
-		require.Equal(t, 1, c.Get().Get().GetSome(1))
+	t.Run("none of many", func(t *testing.T) {
+		var vv = []option.Option[any]{
+			option.None[any](),
+			option.None[any](),
+			option.None[any](),
+		}
+		require.Len(t, option.Get(vv...), 0)
+	})
+	t.Run("all of many", func(t *testing.T) {
+		var vv = []option.Option[any]{
+			option.Some[any](1),
+			option.Some[any](2),
+			option.Some[any](3),
+		}
+		require.Len(t, option.Get(vv...), 3)
+		require.Equal(t, []any{1, 2, 3}, option.Get(vv...))
+	})
+	t.Run("last of many", func(t *testing.T) {
+		var vv = []option.Option[any]{
+			option.None[any](),
+			option.None[any](),
+			option.Some[any](3),
+		}
+		require.Len(t, option.Get(vv...), 1)
+		require.Equal(t, 3, option.Get(vv...)[0])
 	})
 }
 func TestSet(t *testing.T) {
@@ -47,24 +66,32 @@ func TestSet(t *testing.T) {
 	require.True(t, o.IsZero())
 	require.Equal(t, 0, o.Get())
 
+	t.Run("zero", func(t *testing.T) {
+		var op option.Option[int]
+		op.Set(0)
+		require.True(t, op.IsSome())
+		require.False(t, op.IsNone())
+		require.True(t, op.IsZero())
+		require.Equal(t, 0, op.Get())
+	})
 }
-func TestGetSome(t *testing.T) {
+func TestGetFallback(t *testing.T) {
 	t.Run("none", func(t *testing.T) {
-		require.Equal(t, 1, option.None[int]().GetSome(1))
+		require.Equal(t, 1, option.None[int]().GetFallback(1))
 	})
 	t.Run("some", func(t *testing.T) {
-		require.Equal(t, 1, option.Some(1).GetSome(2))
+		require.Equal(t, 1, option.Some(1).GetFallback(2))
 	})
 }
-func TestSetSome(t *testing.T) {
+func TestSetFallback(t *testing.T) {
 	t.Run("none", func(t *testing.T) {
 		var o = option.None[int]()
-		o.SetSome(1)
+		o.SetFallback(1)
 		require.Equal(t, 1, o.Get())
 	})
 	t.Run("some", func(t *testing.T) {
 		var o = option.Some(1)
-		o.SetSome(2)
+		o.SetFallback(2)
 		require.Equal(t, 1, o.Get())
 	})
 }
@@ -147,89 +174,6 @@ func TestWrap(t *testing.T) {
 		}
 	}
 }
-func TestOne(t *testing.T) {
-	t.Run("none", func(t *testing.T) {
-		var vv = []option.Option[any]{
-			option.None[any](),
-			option.None[any](),
-			option.None[any](),
-		}
-		require.True(t, option.One(vv...).IsNone())
-	})
-	t.Run("first", func(t *testing.T) {
-		var vv = []option.Option[any]{
-			option.Some[any](1),
-			option.Some[any](2),
-			option.Some[any](3),
-		}
-		require.True(t, option.One(vv...).IsSome())
-		require.Equal(t, 1, option.One(vv...).Get())
-	})
-	t.Run("last", func(t *testing.T) {
-		var vv = []option.Option[any]{
-			option.None[any](),
-			option.None[any](),
-			option.Some[any](3),
-		}
-		require.True(t, option.One(vv...).IsSome())
-		require.Equal(t, 3, option.One(vv...).Get())
-	})
-}
-func TestAll(t *testing.T) {
-	t.Run("none", func(t *testing.T) {
-		var vv = []option.Option[any]{
-			option.None[any](),
-			option.None[any](),
-			option.None[any](),
-		}
-		require.Empty(t, option.All(vv...))
-	})
-	t.Run("all", func(t *testing.T) {
-		var vv = []option.Option[any]{
-			option.Some[any](1),
-			option.Some[any](2),
-			option.Some[any](3),
-		}
-		require.Len(t, option.All(vv...), len(vv))
-	})
-	t.Run("first", func(t *testing.T) {
-		var vv = []option.Option[any]{
-			option.Some[any](1),
-			option.None[any](),
-			option.None[any](),
-		}
-		require.Len(t, option.All(vv...), 1)
-		require.Equal(t, 1, option.All(vv...)[0].Get())
-	})
-	t.Run("middle", func(t *testing.T) {
-		var vv = []option.Option[any]{
-			option.None[any](),
-			option.Some[any](2),
-			option.None[any](),
-		}
-		require.Len(t, option.All(vv...), 1)
-		require.Equal(t, 2, option.All(vv...)[0].Get())
-	})
-	t.Run("last", func(t *testing.T) {
-		var vv = []option.Option[any]{
-			option.None[any](),
-			option.None[any](),
-			option.Some[any](3),
-		}
-		require.Len(t, option.All(vv...), 1)
-		require.Equal(t, 3, option.All(vv...)[0].Get())
-	})
-	t.Run("order", func(t *testing.T) {
-		var vv = []option.Option[any]{
-			option.Some[any](1),
-			option.None[any](),
-			option.Some[any](3),
-		}
-		require.Len(t, option.All(vv...), 2)
-		require.Equal(t, 1, option.All(vv...)[0].Get())
-		require.Equal(t, 3, option.All(vv...)[1].Get())
-	})
-}
 func TestJSON(t *testing.T) {
 	t.Run("marshal none", func(t *testing.T) {
 		var o = option.None[int]()
@@ -303,14 +247,5 @@ func TestSQL(t *testing.T) {
 		require.True(t, c.Get().IsSome())
 		require.True(t, c.Get().Get().IsSome())
 		require.Equal(t, 1, c.Get().Get().Get())
-	})
-}
-func TestAny(t *testing.T) {
-	t.Run("some", func(t *testing.T) {
-		require.True(t, option.Some(1).Any().IsSome())
-		require.Equal(t, 1, option.Some(1).Any().Get())
-	})
-	t.Run("none", func(t *testing.T) {
-		require.True(t, option.None[int]().Any().IsNone())
 	})
 }

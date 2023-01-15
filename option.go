@@ -15,16 +15,13 @@ import (
 
 type (
 	Option[T any] struct {
-		value T
-		ok    bool
+		vl T
+		ok bool
 	}
 
 	Zeroable interface{ IsZero() bool }
 	Someable interface{ IsSome() bool }
 	Noneable interface{ IsNone() bool }
-	Anyer    interface {
-		Any() Option[any]
-	}
 )
 
 var (
@@ -33,7 +30,7 @@ var (
 )
 
 func Some[T any](v T) Option[T] {
-	return Option[T]{value: v, ok: true}
+	return Option[T]{vl: v, ok: true}
 }
 func None[T any]() Option[T] {
 	return Option[T]{}
@@ -55,31 +52,9 @@ func Wrap[T any](v T) Option[T] {
 // Unwrap returns value of some, otherwise zero value.
 func Unwrap[T any](o Option[T]) (v T) {
 	if o.ok {
-		return o.value
+		return o.vl
 	}
 	return v
-}
-func One[T any](oo ...Option[T]) (o Option[T]) {
-	for _, o = range oo {
-		if o.ok {
-			break
-		}
-	}
-	return o
-}
-func All[T any](oo ...Option[T]) []Option[T] {
-	for i := 0; i < len(oo); i++ {
-		if !oo[i].ok {
-			oo = append(oo[:i], oo[i+1:]...)
-			i--
-		}
-	}
-	return oo
-}
-
-// IsNone returns a true if value is some
-func (o Option[T]) IsSome() (ok bool) {
-	return o.ok
 }
 
 // IsSome returns a true for some value
@@ -92,9 +67,9 @@ func IsSome(ss ...Someable) (ok bool) {
 	return true
 }
 
-// IsNone returns a true if value is none
-func (o Option[T]) IsNone() (ok bool) {
-	return !o.ok
+// IsNone returns a true if value is some
+func (o Option[T]) IsSome() (ok bool) {
+	return o.ok
 }
 
 // IsNone returns a true for none value
@@ -107,15 +82,9 @@ func IsNone(nn ...Noneable) (ok bool) {
 	return true
 }
 
-// IsZero returns a true if value is zero
-func (o Option[T]) IsZero() (ok bool) {
-	if !o.ok {
-		return true
-	}
-	if r := reflect.ValueOf(o.value); !r.IsValid() || r.IsZero() {
-		return true
-	}
-	return false
+// IsNone returns a true if value is none
+func (o Option[T]) IsNone() (ok bool) {
+	return !o.ok
 }
 
 // IsZero returns a true for none and zero
@@ -128,9 +97,54 @@ func IsZero(zz ...Zeroable) (ok bool) {
 	return true
 }
 
-// Get returns a value for some and panics for none if the nested type isn't implement the Anyer interface
+// IsZero returns a true if value is zero
+func (o Option[T]) IsZero() (ok bool) {
+	if !o.ok {
+		return true
+	}
+	if r := reflect.ValueOf(o.vl); !r.IsValid() || r.IsZero() {
+		return true
+	}
+	return false
+}
+
+// GetZero returns a values in any case, even if it none or zero
+func GetZero[T any](oo ...Option[T]) (values []T) {
+	values = make([]T, len(oo))
+	for i := range oo {
+		values[i] = oo[i].GetZero()
+	}
+	return values
+}
+
+// Get returns a value if it some, in other case panics
+func (o Option[T]) GetZero() T {
+	var zero T
+	return o.GetFallback(zero)
+}
+
+// GetFallback returns vl if current value is not some
+func (o Option[T]) GetFallback(vl T) T {
+	if o.ok {
+		return o.vl
+	}
+	return vl
+}
+
+// GetZero returns a some values
+func Get[T any](oo ...Option[T]) (values []T) {
+	values = make([]T, 0, len(oo))
+	for i := range oo {
+		if oo[i].IsSome() {
+			values = append(values, oo[i].Get())
+		}
+	}
+	return values
+}
+
+// GetZero returns a value if it some, in other case panics
 func (o Option[T]) Get() T {
-	if _, ok := any(o.value).(Anyer); !ok && !o.ok {
+	if !o.ok {
 		var caller string
 		if _, file, line, ok := runtime.Caller(1); ok {
 			file = strings.Replace(file, basepath, "", 1)
@@ -138,31 +152,38 @@ func (o Option[T]) Get() T {
 		}
 		panic(fmt.Errorf("option: %T is none in %s", o, caller))
 	}
-	return o.value
+	return o.vl
 }
-func (o Option[T]) GetSome(fallback T) T {
-	return One(o, Some(fallback)).Get()
+
+// SetZero value if current value is none
+func (o *Option[T]) SetZero() {
+	var zero T
+	o.SetFallback(zero)
 }
+
+// SetFallback value if current value is none
+func (o *Option[T]) SetFallback(vl T) {
+	if o.ok {
+		return
+	}
+	o.Set(vl)
+}
+
+// Set value
 func (o *Option[T]) Set(v T) {
-	o.value, o.ok = v, true
-}
-func (o *Option[T]) SetSome(fallback T) {
-	*o = One(*o, Some(fallback))
-}
-func (o Option[T]) Any() Option[any] {
-	return Option[any]{value: o.value, ok: o.ok}
+	o.vl, o.ok = v, true
 }
 func (o Option[T]) MarshalJSON() (b []byte, err error) {
 	if !o.ok {
 		return json.Marshal(nil)
 	}
-	return json.Marshal(o.value)
+	return json.Marshal(o.vl)
 }
 func (o *Option[T]) UnmarshalJSON(b []byte) (err error) {
 	if b == nil || bytes.Equal(b, []byte("null")) {
 		return
 	}
-	if err = json.Unmarshal(b, &o.value); err != nil {
+	if err = json.Unmarshal(b, &o.vl); err != nil {
 		return
 	}
 	o.ok = true
@@ -172,8 +193,8 @@ func (o Option[T]) Value() (val sql.Value, err error) {
 	if !o.ok {
 		return nil, nil
 	}
-	if val, err = sql.Marshal(o.value); err != nil {
-		return val, fmt.Errorf("option: value from %T: %w", o.value, err)
+	if val, err = sql.Marshal(o.vl); err != nil {
+		return val, fmt.Errorf("option: value from %T: %w", o.vl, err)
 	}
 	return val, nil
 }
@@ -182,8 +203,8 @@ func (o *Option[T]) Scan(src any) (err error) {
 		*o = Option[T]{}
 		return nil
 	}
-	if err = sql.Unmarshal(src, &o.value); err != nil {
-		return fmt.Errorf("option: scan from %T to %T: %w", src, o.value, err)
+	if err = sql.Unmarshal(src, &o.vl); err != nil {
+		return fmt.Errorf("option: scan from %T to %T: %w", src, o.vl, err)
 	}
 	o.ok = true
 	return
