@@ -18,6 +18,7 @@ type (
 		vl T
 		ok bool
 	}
+	multiple[T any] []Option[T]
 
 	Zeroable interface{ IsZero() bool }
 	Someable interface{ IsSome() bool }
@@ -34,6 +35,15 @@ func Some[T any](v T) Option[T] {
 }
 func None[T any]() Option[T] {
 	return Option[T]{}
+}
+func Each[T any](v ...Option[T]) multiple[T] {
+	return multiple[T](v)
+}
+func SomeOf[T any](v ...Option[T]) Option[T] {
+	return Each(v...).Some().First()
+}
+func GetOf[T any](v ...Option[T]) T {
+	return Each(v...).Some().First().GetZero()
 }
 
 // Wrap returns none for nilled value, otherwise some.
@@ -66,10 +76,21 @@ func IsSome(ss ...Someable) (ok bool) {
 	}
 	return true
 }
+func (ls multiple[T]) IsEmpty() bool {
+	return len(ls) == 0
+}
 
 // IsNone returns a true if value is some
 func (o Option[T]) IsSome() (ok bool) {
 	return o.ok
+}
+func (ls multiple[T]) IsSome() bool {
+	for i := range ls {
+		if !ls[i].IsSome() {
+			return false
+		}
+	}
+	return !ls.IsEmpty()
 }
 
 // IsNone returns a true for none value
@@ -85,6 +106,14 @@ func IsNone(nn ...Noneable) (ok bool) {
 // IsNone returns a true if value is none
 func (o Option[T]) IsNone() (ok bool) {
 	return !o.ok
+}
+func (ls multiple[T]) IsNone() bool {
+	for i := range ls {
+		if !ls[i].IsNone() {
+			return false
+		}
+	}
+	return true
 }
 
 // IsZero returns a true for none and zero
@@ -107,42 +136,32 @@ func (o Option[T]) IsZero() (ok bool) {
 	}
 	return false
 }
-
-// GetZero returns a values in any case, even if it none or zero
-func GetZero[T any](oo ...Option[T]) (values []T) {
-	values = make([]T, len(oo))
-	for i := range oo {
-		values[i] = oo[i].GetZero()
+func (ls multiple[T]) IsZero() bool {
+	for i := range ls {
+		if !ls[i].IsZero() {
+			return false
+		}
 	}
-	return values
+	return true
+}
+
+// GetZero returns a value, if it none or zero then returns zero value
+func (o Option[T]) GetZero() T {
+	if !o.ok {
+		var zero T
+		return zero
+	}
+	return o.Get()
+}
+func (ls multiple[T]) GetZero() []T {
+	var some = make([]T, len(ls))
+	for i := range ls {
+		some[i] = ls[i].GetZero()
+	}
+	return some
 }
 
 // Get returns a value if it some, in other case panics
-func (o Option[T]) GetZero() T {
-	var zero T
-	return o.GetFallback(zero)
-}
-
-// GetFallback returns vl if current value is not some
-func (o Option[T]) GetFallback(vl T) T {
-	if o.ok {
-		return o.vl
-	}
-	return vl
-}
-
-// GetZero returns a some values
-func Get[T any](oo ...Option[T]) (values []T) {
-	values = make([]T, 0, len(oo))
-	for i := range oo {
-		if oo[i].IsSome() {
-			values = append(values, oo[i].Get())
-		}
-	}
-	return values
-}
-
-// GetZero returns a value if it some, in other case panics
 func (o Option[T]) Get() T {
 	if !o.ok {
 		var caller string
@@ -154,30 +173,62 @@ func (o Option[T]) Get() T {
 	}
 	return o.vl
 }
-
-// SetZero value if current value is none
-func (o *Option[T]) SetZero() {
-	var zero T
-	o.SetFallback(zero)
-}
-
-// SetFallback value if current value is none
-func (o *Option[T]) SetFallback(vl T) {
-	if o.ok {
-		return
+func (ls multiple[T]) Get() []T {
+	var some = make([]T, 0, len(ls))
+	for i := range ls {
+		if ls[i].IsSome() {
+			some = append(some, ls[i].Get())
+		}
 	}
-	o.Set(vl)
+	return some
 }
-
-// Set value
-func (o *Option[T]) Set(v T) {
-	o.vl, o.ok = v, true
+func (ls multiple[T]) Some() multiple[T] {
+	var some = make(multiple[T], 0, len(ls))
+	for i := range ls {
+		if ls[i].IsSome() {
+			some = append(some, ls[i])
+		}
+	}
+	return some
+}
+func (ls multiple[T]) None() multiple[T] {
+	var none = make(multiple[T], 0, len(ls))
+	for i := range ls {
+		if ls[i].IsNone() {
+			none = append(none, ls[i])
+		}
+	}
+	return none
+}
+func (ls multiple[T]) Zero() multiple[T] {
+	var zero = make(multiple[T], 0, len(ls))
+	for i := range ls {
+		if ls[i].IsZero() {
+			zero = append(zero, ls[i])
+		}
+	}
+	return zero
+}
+func (ls multiple[T]) First() Option[T] {
+	if len(ls) == 0 {
+		return None[T]()
+	}
+	return ls[0]
+}
+func (ls multiple[T]) Last() Option[T] {
+	if len(ls) == 0 {
+		return None[T]()
+	}
+	return ls[len(ls)-1]
 }
 func (o Option[T]) MarshalJSON() (b []byte, err error) {
 	if !o.ok {
 		return json.Marshal(nil)
 	}
 	return json.Marshal(o.vl)
+}
+func (ls multiple[T]) MarshalJSON() (b []byte, err error) {
+	return json.Marshal([]Option[T](ls.Some()))
 }
 func (o *Option[T]) UnmarshalJSON(b []byte) (err error) {
 	if b == nil || bytes.Equal(b, []byte("null")) {
