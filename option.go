@@ -51,7 +51,7 @@ func Maybe[T any](value T) Option[T] {
 	return Some(value)
 }
 
-// SomeAll returns all some values
+// SomeAll returns all some options
 func SomeAll[T any](op ...Option[T]) []Option[T] {
 	for i := 0; i < len(op); i++ {
 		if op[i].IsNone() {
@@ -65,7 +65,7 @@ func SomeAll[T any](op ...Option[T]) []Option[T] {
 	return op
 }
 
-// SomeOne returns first some values. If there no some values, then none
+// SomeOne returns first some option. If there are no some options, then returns none option
 func SomeOne[T any](op ...Option[T]) Option[T] {
 	for i := range op {
 		if op[i].IsSome() {
@@ -74,6 +74,8 @@ func SomeOne[T any](op ...Option[T]) Option[T] {
 	}
 	return None[T]()
 }
+
+// GetAll returns all some values
 func GetAll[T any](op ...Option[T]) (some []T) {
 	for i := range op {
 		if op[i].IsSome() {
@@ -82,6 +84,8 @@ func GetAll[T any](op ...Option[T]) (some []T) {
 	}
 	return some
 }
+
+// GetOne returns first some value. If there are no some value, then return none value
 func GetOne[T any](op ...Option[T]) (some T) {
 	for i := range op {
 		if op[i].IsSome() {
