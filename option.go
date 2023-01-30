@@ -85,7 +85,7 @@ func GetAll[T any](op ...Option[T]) (some []T) {
 	return some
 }
 
-// GetOne returns first some value. If there are no some value, then return none value
+// GetOne returns first some value. If there are no some value, then return zero value
 func GetOne[T any](op ...Option[T]) (some T) {
 	for i := range op {
 		if op[i].IsSome() {
