@@ -43,10 +43,20 @@ func Maybe[T any](value T) Option[T] {
 	} else if rv.IsZero() {
 		return None[T]()
 	}
-
 	return Some(value)
 }
-
+func AnyAll[T any](op ...Option[T]) []Option[any] {
+	var someall = SomeAll(op...)
+	var all = make([]Option[any], len(someall))
+	for i := range someall {
+		all[i] = Option[any]{ok: someall[i].ok, vl: someall[i].vl}
+	}
+	return all
+}
+func AnyOne[T any](op ...Option[T]) Option[any] {
+	var one = SomeOne(op...)
+	return Option[any]{ok: one.ok, vl: one.vl}
+}
 func SomeAll[T any](op ...Option[T]) []Option[T] {
 	for i := 0; i < len(op); i++ {
 		if op[i].IsNone() {
