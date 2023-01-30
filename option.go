@@ -28,12 +28,17 @@ var (
 	basepath   = filepath.Dir(b)
 )
 
+// Some creates new some value
 func Some[T any](v T) Option[T] {
 	return Option[T]{vl: v, ok: true}
 }
+
+// None creates new none value
 func None[T any]() Option[T] {
 	return Option[T]{}
 }
+
+// Maybe returns some if the value is non zero and nil
 func Maybe[T any](value T) Option[T] {
 	rv := reflect.ValueOf(value)
 	if !rv.IsValid() {
@@ -45,18 +50,8 @@ func Maybe[T any](value T) Option[T] {
 	}
 	return Some(value)
 }
-func AnyAll[T any](op ...Option[T]) []Option[any] {
-	var someall = SomeAll(op...)
-	var all = make([]Option[any], len(someall))
-	for i := range someall {
-		all[i] = Option[any]{ok: someall[i].ok, vl: someall[i].vl}
-	}
-	return all
-}
-func AnyOne[T any](op ...Option[T]) Option[any] {
-	var one = SomeOne(op...)
-	return Option[any]{ok: one.ok, vl: one.vl}
-}
+
+// SomeAll returns all some values
 func SomeAll[T any](op ...Option[T]) []Option[T] {
 	for i := 0; i < len(op); i++ {
 		if op[i].IsNone() {
@@ -69,6 +64,8 @@ func SomeAll[T any](op ...Option[T]) []Option[T] {
 	}
 	return op
 }
+
+// SomeOne returns first some values. If there no some values, then none
 func SomeOne[T any](op ...Option[T]) Option[T] {
 	for i := range op {
 		if op[i].IsSome() {
@@ -94,7 +91,7 @@ func GetOne[T any](op ...Option[T]) (some T) {
 	return some
 }
 
-// IsSome returns a true for some value
+// IsSome returns a true if all passed values is some
 func IsSome(ss ...Someable) (ok bool) {
 	for i := range ss {
 		if !ss[i].IsSome() {
@@ -109,7 +106,7 @@ func (o Option[T]) IsSome() (ok bool) {
 	return o.ok
 }
 
-// IsNone returns a true for none value
+// IsNone returns a true if all passed values is none
 func IsNone(nn ...Noneable) (ok bool) {
 	for i := range nn {
 		if !nn[i].IsNone() {
@@ -124,7 +121,7 @@ func (o Option[T]) IsNone() (ok bool) {
 	return !o.ok
 }
 
-// IsZero returns a true for none and zero
+// IsZero returns a true if all passed values is zero
 func IsZero(zz ...Zeroable) (ok bool) {
 	for i := range zz {
 		if !zz[i].IsZero() {
