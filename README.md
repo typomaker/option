@@ -14,7 +14,7 @@ import "github.com/typomaker/option"
 ### Value initialization and checks.
 ```go
 import "github.com/typomaker/option"
-var value option.Option[string]{}
+var value option.Option[string]
 if value.IsZero() { // if value is undefined.
     value = option.Some("foo") // then define it using Some[string](...).
 }
@@ -29,7 +29,7 @@ if value.IsNone() { // if value is defined and null
 
 ### Value getting.
 ```go
-var value option.Option[string]{}
+var value option.Option[string]
 
 value.Get() // returns value if defined not null, otherwise panics.
 value.GetOr("fallback") // returns value if defined not null, otherwise passed value.
