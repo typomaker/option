@@ -23,9 +23,9 @@ type (
 	Complex128 = Option[complex128]
 )
 
-// SomeOf returns first some option.
+// OneOf returns first some option.
 // If there are no some options, then returns none value.
-func SomeOf[T any](op ...Option[T]) Option[T] {
+func OneOf[T any](op ...Option[T]) Option[T] {
 	for i := range op {
 		if op[i].IsSome() {
 			return op[i]

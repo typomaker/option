@@ -27,6 +27,47 @@ func ExampleOption_states() {
 	// value is none, defined and same as null: true
 	// value is some, defined and not null: true
 }
+func ExampleMaybe() {
+	fmt.Printf("%#v\n", Maybe(0))
+	fmt.Printf("%#v\n", Maybe(1))
+	fmt.Printf("%#v\n", Maybe((*string)(nil)))
+	fmt.Printf("%#v\n", Maybe("123123"))
+	// Output:
+	// None[int]()
+	// Some[int](1)
+	// None[*string]()
+	// Some[string]("123123")
+}
+func ExampleOneOf() {
+	var value1 = option.None[int]()
+	var value2 = option.Some[int](1)
+	var value3 = option.Some[int](2)
+
+	fmt.Printf("%#v", option.OneOf(value1, value2, value3))
+
+	// Output:
+	// Some[int](1)
+}
+func ExampleGetOf() {
+	var value1 = option.None[int]()
+	var value2 = option.Some[int](1)
+	var value3 = option.Some[int](2)
+
+	fmt.Printf("%#v", option.GetOf(value1, value2, value3))
+
+	// Output:
+	// 1
+}
+func ExamplePickOf() {
+	var value1 = option.None[int]()
+	var value2 = option.Some[int](1)
+	var value3 = option.Some[int](2)
+
+	fmt.Printf("%#v", option.PickOf(value1, value2, value3))
+
+	// Output:
+	// []int{1, 2}
+}
 func ExampleOption_GetOrFunc() {
 	fmt.Println("none", option.None[int]().GetOrFunc(func() int { return 1 }))
 	fmt.Println("some", option.Some(2).GetOrFunc(func() int { return 1 }))
@@ -54,10 +95,10 @@ func ExampleOption_GetOrZero() {
 	// some 1
 	// zero 0
 }
-func ExampleOption_GetOrNil() {
-	fmt.Println("none", option.None[int]().GetOrNil())
-	fmt.Printf("some %v\n", *option.Some("1").GetOrNil())
-	fmt.Println("zero", option.Option[int]{}.GetOrNil())
+func ExampleOption_GetNilable() {
+	fmt.Println("none", option.None[int]().GetNilable())
+	fmt.Printf("some %v\n", *option.Some("1").GetNilable())
+	fmt.Println("zero", option.Option[int]{}.GetNilable())
 	// Output:
 	// none <nil>
 	// some 1
@@ -166,10 +207,10 @@ func TestIsZero(t *testing.T) {
 		require.False(t, IsZero(vv...))
 	})
 }
-func TestNil(t *testing.T) {
-	require.Equal(t, None[string](), Nil((*string)(nil)))
+func TestNilable(t *testing.T) {
+	require.Equal(t, None[string](), Nilable((*string)(nil)))
 	var value = "123"
-	require.Equal(t, Some[string]("123"), Nil(&value))
+	require.Equal(t, Some[string]("123"), Nilable(&value))
 }
 func TestMaybe(t *testing.T) {
 	var refsome = 0
@@ -234,11 +275,11 @@ func TestJSON(t *testing.T) {
 	})
 }
 func TestSomeOne(t *testing.T) {
-	require.Equal(t, None[int](), SomeOf[int]())
-	require.Equal(t, None[int](), SomeOf(None[int]()))
-	require.Equal(t, Some(1), SomeOf(Some(1)))
-	require.Equal(t, Some(1), SomeOf(Some(1), None[int](), Some(2)))
-	require.Equal(t, Some(1), SomeOf(None[int](), Some(1), None[int]()))
+	require.Equal(t, None[int](), OneOf[int]())
+	require.Equal(t, None[int](), OneOf(None[int]()))
+	require.Equal(t, Some(1), OneOf(Some(1)))
+	require.Equal(t, Some(1), OneOf(Some(1), None[int](), Some(2)))
+	require.Equal(t, Some(1), OneOf(None[int](), Some(1), None[int]()))
 }
 func TestPickOf(t *testing.T) {
 	require.Equal(t, ([]int)(nil), PickOf[int]())

@@ -53,7 +53,7 @@ func Some[T any](v T) Option[T] {
 func None[T any]() Option[T] {
 	return Option[T]{defined: true}
 }
-func Nil[T any](v *T) Option[T] {
+func Nilable[T any](v *T) Option[T] {
 	if v == nil {
 		return None[T]()
 	}
@@ -93,10 +93,10 @@ func (o Option[T]) Get() T {
 	return o.element
 }
 
-// GetOrNil returns the nil value if the option is none.
+// GetNilable returns the nil value if the option is none.
 // Pointer is refers to a copy of the origin value,
 // so that means any changes to the pointer don't affect the value of the option.
-func (o Option[T]) GetOrNil() *T {
+func (o Option[T]) GetNilable() *T {
 	if !o.valued {
 		return nil
 	}
