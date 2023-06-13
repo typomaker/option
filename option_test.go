@@ -274,7 +274,7 @@ func TestJSON(t *testing.T) {
 		require.Equal(t, 1, o.Get())
 	})
 }
-func TestSomeOne(t *testing.T) {
+func TestOneOf(t *testing.T) {
 	require.Equal(t, None[int](), OneOf[int]())
 	require.Equal(t, None[int](), OneOf(None[int]()))
 	require.Equal(t, Some(1), OneOf(Some(1)))
