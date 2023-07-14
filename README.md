@@ -45,17 +45,17 @@ value = optional.GetNilable() // returns &value is some, otherwise returns nil.
 ```
 
 ### Convert value to optional.
-Maybe function returns `Some[T](...)` for non zero and not nil value, otherwise returns `None[T]()`
+SomeOrNone function returns `Some[T](...)` for non zero and not nil value, otherwise returns `None[T]()`
 ```go
-fmt.Printf("%#v\n", Maybe(0))
-fmt.Printf("%#v\n", Maybe(1))
-fmt.Printf("%#v\n", Maybe((*string)(nil)))
-fmt.Printf("%#v\n", Maybe("123123"))
+fmt.Printf("%#v\n", SomeOrNone(0))
+fmt.Printf("%#v\n", SomeOrNone(1))
+fmt.Printf("%#v\n", SomeOrNone((*string)(nil)))
+fmt.Printf("%#v\n", SomeOrNone("123123"))
 // Output:
-// None[int]()
-// Some[int](1)
-// None[*string]()
-// Some[string]("123123")
+// option.None[int]()
+// option.Some[int](1)
+// option.None[*string]()
+// option.Some[string]("123123")
 
 ```
 
@@ -87,13 +87,14 @@ fmt.Printf("%#v", option.GetOf(value1, value2, value3))
 ```
 
 ### PickOf helper
-Returns all some option from passed.
+Returns all values of passed options, exclude the zero and none option.
 ```go
 var value1 = option.None[int]()
 var value2 = option.Some[int](1)
-var value3 = option.Some[int](2)
+var value3 = option.None[int]()
+var value4 = option.Option[int]{}
 
-fmt.Printf("%#v", option.PickOf(value1, value2, value3))
+fmt.Printf("%#v", option.PickOf(value1, value2, value3, value4))
 
 // Output:
 // []int{1, 2}
