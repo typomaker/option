@@ -27,16 +27,27 @@ func ExampleOption_states() {
 	// value is none, defined and same as null: true
 	// value is some, defined and not null: true
 }
-func ExampleMaybe() {
-	fmt.Printf("%#v\n", Maybe(0))
-	fmt.Printf("%#v\n", Maybe(1))
-	fmt.Printf("%#v\n", Maybe((*string)(nil)))
-	fmt.Printf("%#v\n", Maybe("123123"))
+func ExampleSomeOrNone() {
+	fmt.Printf("%#v\n", SomeOrNone(0))
+	fmt.Printf("%#v\n", SomeOrNone(1))
+	fmt.Printf("%#v\n", SomeOrNone((*string)(nil)))
+	fmt.Printf("%#v\n", SomeOrNone("123123"))
 	// Output:
-	// None[int]()
-	// Some[int](1)
-	// None[*string]()
-	// Some[string]("123123")
+	// option.None[int]()
+	// option.Some[int](1)
+	// option.None[*string]()
+	// option.Some[string]("123123")
+}
+func ExampleSomeOrZero() {
+	fmt.Printf("%#v\n", SomeOrZero(0))
+	fmt.Printf("%#v\n", SomeOrZero(1))
+	fmt.Printf("%#v\n", SomeOrZero((*string)(nil)))
+	fmt.Printf("%#v\n", SomeOrZero("123123"))
+	// Output:
+	// option.Option[int]{}
+	// option.Some[int](1)
+	// option.Option[*string]{}
+	// option.Some[string]("123123")
 }
 func ExampleOneOf() {
 	var value1 = option.None[int]()
@@ -46,7 +57,7 @@ func ExampleOneOf() {
 	fmt.Printf("%#v", option.OneOf(value1, value2, value3))
 
 	// Output:
-	// Some[int](1)
+	// option.Some[int](1)
 }
 func ExampleGetOf() {
 	var value1 = option.None[int]()
@@ -212,7 +223,7 @@ func TestNilable(t *testing.T) {
 	var value = "123"
 	require.Equal(t, Some[string]("123"), Nilable(&value))
 }
-func TestMaybe(t *testing.T) {
+func TestSomeOrNone(t *testing.T) {
 	var refsome = 0
 	var someable = []any{
 		&refsome,
@@ -222,7 +233,7 @@ func TestMaybe(t *testing.T) {
 	}
 	for i := range someable {
 		t.Run(fmt.Sprintln(someable[i]), func(t *testing.T) {
-			require.True(t, Maybe(someable[i]).IsSome())
+			require.True(t, SomeOrNone(someable[i]).IsSome())
 		})
 	}
 	var noneable = []any{
@@ -235,7 +246,34 @@ func TestMaybe(t *testing.T) {
 
 	for i := range noneable {
 		t.Run(fmt.Sprintln(noneable[i]), func(t *testing.T) {
-			require.True(t, Maybe(noneable[i]).IsNone())
+			require.True(t, SomeOrNone(noneable[i]).IsNone())
+		})
+	}
+}
+func TestSomeOrZero(t *testing.T) {
+	var refsome = 0
+	var someable = []any{
+		&refsome,
+		1,
+		time.Now(),
+		true,
+	}
+	for i := range someable {
+		t.Run(fmt.Sprintln(someable[i]), func(t *testing.T) {
+			require.True(t, SomeOrZero(someable[i]).IsSome())
+		})
+	}
+	var noneable = []any{
+		nil,
+		0,
+		time.Time{},
+		false,
+		(*bool)(nil),
+	}
+
+	for i := range noneable {
+		t.Run(fmt.Sprintln(noneable[i]), func(t *testing.T) {
+			require.True(t, SomeOrZero(noneable[i]).IsZero())
 		})
 	}
 }
@@ -300,13 +338,14 @@ func TestGoString(t *testing.T) {
 		want  string
 		value interface{ GoString() string }
 	}{
-		{`Some[int](123)`, Some(123)},
-		{`Some[int32](123)`, Some(int32(123))},
-		{`Some[int64](123)`, Some(int64(123))},
-		{`Some[float32](123.1)`, Some[float32](123.1)},
-		{`Some[float64](123.1)`, Some(123.1)},
-		{`Some[string]("foo")`, Some("foo")},
-		{`None[string]()`, None[string]()},
+		{`option.Some[int](123)`, Some(123)},
+		{`option.Some[int32](123)`, Some(int32(123))},
+		{`option.Some[int64](123)`, Some(int64(123))},
+		{`option.Some[float32](123.1)`, Some[float32](123.1)},
+		{`option.Some[float64](123.1)`, Some(123.1)},
+		{`option.Some[string]("foo")`, Some("foo")},
+		{`option.None[string]()`, None[string]()},
+		{`option.Option[string]{}`, Option[string]{}},
 	}
 	for i := range cases {
 		require.Equal(t, cases[i].want, cases[i].value.GoString())

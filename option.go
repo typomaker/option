@@ -60,15 +60,30 @@ func Nilable[T any](v *T) Option[T] {
 	return Some(*v)
 }
 
-// Maybe returns some if the value is non zero and nil.
+// SomeOrZero returns some if the value is non zero and nil. Othrwise returns None
 //
 //	Example:
-//		log.Println(Maybe(0)) // None[int]()
-//		log.Println(Maybe(1)) // Some[int](1)
-//		log.Println(Maybe((*string)(nil))) // None[*string]()
+//		log.Println(SomeOrNone(0)) // Option[int]{}
+//		log.Println(SomeOrNone(1)) // Some[int](1)
+//		log.Println(SomeOrNone((*string)(nil))) // Option[*string]{}
 //		ptr := "foo"
-//		log.Println(Maybe(&ptr)) // Some[*string](foo)
-func Maybe[T any](value T) Option[T] {
+//		log.Println(SomeOrNone(&ptr)) // Some[*string](foo)
+func SomeOrZero[T any](value T) Option[T] {
+	if v := SomeOrNone[T](value); v.IsSome() {
+		return v
+	}
+	return Option[T]{}
+}
+
+// SomeOrNone returns some if the value is non zero and nil. Othrwise returns None
+//
+//	Example:
+//		log.Println(SomeOrNone(0)) // None[int]()
+//		log.Println(SomeOrNone(1)) // Some[int](1)
+//		log.Println(SomeOrNone((*string)(nil))) // None[*string]()
+//		ptr := "foo"
+//		log.Println(SomeOrNone(&ptr)) // Some[*string](foo)
+func SomeOrNone[T any](value T) Option[T] {
 	if vv, ok := any(value).(Noneable); ok && vv.IsNone() {
 		return None[T]()
 	} else if vv, ok := any(value).(Zeroable); ok && vv.IsZero() {
@@ -82,7 +97,7 @@ func Maybe[T any](value T) Option[T] {
 
 // Get returns a value if it some, in other case panics.
 func (o Option[T]) Get() T {
-	if o.IsZero() || o.IsNone() {
+	if !o.IsSome() {
 		var caller string
 		if _, file, line, ok := runtime.Caller(1); ok {
 			file = strings.Replace(file, basepath, "", 1)
@@ -126,7 +141,7 @@ func (o Option[T]) GetOrFunc(getter func() T) T {
 	return o.element
 }
 func (o Option[T]) String() string {
-	if o.IsZero() {
+	if !o.IsSome() {
 		return ""
 	}
 	if s, ok := any(o.element).(fmt.Stringer); ok {
@@ -139,13 +154,13 @@ func (o Option[T]) String() string {
 	return fmt.Sprintf("%v", rv.Interface())
 }
 func (o Option[T]) GoString() string {
-	if o.IsZero() {
-		return fmt.Sprintf("Value[%T]{}", o.element)
-	}
 	if o.IsNone() {
-		return fmt.Sprintf("None[%T]()", o.element)
+		return fmt.Sprintf("option.None[%T]()", o.element)
 	}
-	return fmt.Sprintf("Some[%T](%#v)", o.element, o.element)
+	if o.IsSome() {
+		return fmt.Sprintf("option.Some[%T](%#v)", o.element, o.element)
+	}
+	return fmt.Sprintf("option.Option[%T]{}", o.element)
 }
 
 // MarshalJSON is a implementation of the json.Marshaler.
