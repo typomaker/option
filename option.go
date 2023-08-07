@@ -150,6 +150,9 @@ func (o Option[T]) String() string {
 	rv := reflect.ValueOf(o.element)
 	for rv.Kind() == reflect.Pointer {
 		rv = rv.Elem()
+		if s, ok := rv.Interface().(fmt.Stringer); ok {
+			return s.String()
+		}
 	}
 	return fmt.Sprintf("%v", rv.Interface())
 }
@@ -165,7 +168,10 @@ func (o Option[T]) GoString() string {
 
 // MarshalJSON is a implementation of the json.Marshaler.
 func (o Option[T]) MarshalJSON() (b []byte, err error) {
-	if o.IsZero() || o.IsNone() {
+	if o.IsZero() {
+		return nil, nil
+	}
+	if o.IsNone() {
 		return json.Marshal(nil)
 	}
 	return json.Marshal(o.element)

@@ -48,15 +48,16 @@ value = optional.GetNilable() // returns &value is some, otherwise returns nil.
 SomeOrNone function returns `Some[T](...)` for non zero and not nil value, otherwise returns `None[T]()`
 ```go
 fmt.Printf("%#v\n", SomeOrNone(0))
+fmt.Printf("%#v\n", SomeOrZero(0))
 fmt.Printf("%#v\n", SomeOrNone(1))
 fmt.Printf("%#v\n", SomeOrNone((*string)(nil)))
 fmt.Printf("%#v\n", SomeOrNone("123123"))
 // Output:
 // option.None[int]()
+// option.Option[int]{}
 // option.Some[int](1)
 // option.None[*string]()
 // option.Some[string]("123123")
-
 ```
 
 ### OneOf helper
