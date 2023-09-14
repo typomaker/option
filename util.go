@@ -1,6 +1,8 @@
 package option
 
-import "time"
+import (
+	"time"
+)
 
 type (
 	Time       = Option[time.Time]
@@ -23,15 +25,15 @@ type (
 	Complex128 = Option[complex128]
 )
 
-// OneOf returns first some option.
+// OneOf returns first not zero option.
 // If there are no some options, then returns none value.
 func OneOf[T any](op ...Option[T]) Option[T] {
 	for i := range op {
-		if op[i].IsSome() {
+		if !op[i].IsZero() {
 			return op[i]
 		}
 	}
-	return None[T]()
+	return Option[T]{}
 }
 
 // GetOf returns value of first some value.
@@ -85,4 +87,28 @@ func IsZero(zz ...Zeroable) (ok bool) {
 		}
 	}
 	return true
+}
+func Equal[T comparable](l, r Option[T]) bool {
+	switch {
+	case
+		l.IsZero() && !r.IsZero(),
+		l.IsNone() && !r.IsNone(),
+		l.IsSome() && !r.IsSome(),
+		l.IsSome() && !(l.Get() == r.Get()):
+		return false
+	default:
+		return true
+	}
+}
+func EqualFunc[L, R any](l Option[L], r Option[R], fn func(l L, r R) bool) bool {
+	switch {
+	case
+		l.IsZero() && !r.IsZero(),
+		l.IsNone() && !r.IsNone(),
+		l.IsSome() && !r.IsSome(),
+		l.IsSome() && !fn(l.Get(), r.Get()):
+		return false
+	default:
+		return true
+	}
 }

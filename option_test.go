@@ -8,18 +8,17 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/typomaker/option"
 	. "github.com/typomaker/option"
 )
 
 func ExampleOption_states() {
-	var value option.Option[string]
+	var value Option[string]
 	fmt.Println("value is zero, same as undefined:", value.IsZero())
 
-	value = option.None[string]()
+	value = None[string]()
 	fmt.Println("value is none, defined and same as null:", value.IsNone())
 
-	value = option.Some[string]("hello world")
+	value = Some[string]("hello world")
 	fmt.Println("value is some, defined and not null:", value.IsSome())
 
 	// Output:
@@ -50,66 +49,66 @@ func ExampleSomeOrZero() {
 	// option.Some[string]("123123")
 }
 func ExampleOneOf() {
-	var value1 = option.None[int]()
-	var value2 = option.Some[int](1)
-	var value3 = option.Some[int](2)
+	var value1 = Option[int]{}
+	var value2 = Some[int](1)
+	var value3 = Some[int](2)
 
-	fmt.Printf("%#v", option.OneOf(value1, value2, value3))
+	fmt.Printf("%#v", OneOf(value1, value2, value3))
 
 	// Output:
 	// option.Some[int](1)
 }
 func ExampleGetOf() {
-	var value1 = option.None[int]()
-	var value2 = option.Some[int](1)
-	var value3 = option.Some[int](2)
+	var value1 = Option[int]{}
+	var value2 = Some[int](1)
+	var value3 = Some[int](2)
 
-	fmt.Printf("%#v", option.GetOf(value1, value2, value3))
+	fmt.Printf("%#v", GetOf(value1, value2, value3))
 
 	// Output:
 	// 1
 }
 func ExamplePickOf() {
-	var value1 = option.None[int]()
-	var value2 = option.Some[int](1)
-	var value3 = option.Some[int](2)
+	var value1 = Option[int]{}
+	var value2 = Some[int](1)
+	var value3 = Some[int](2)
 
-	fmt.Printf("%#v", option.PickOf(value1, value2, value3))
+	fmt.Printf("%#v", PickOf(value1, value2, value3))
 
 	// Output:
 	// []int{1, 2}
 }
 func ExampleOption_GetOrFunc() {
-	fmt.Println("none", option.None[int]().GetOrFunc(func() int { return 1 }))
-	fmt.Println("some", option.Some(2).GetOrFunc(func() int { return 1 }))
-	fmt.Println("zero", option.Option[int]{}.GetOrFunc(func() int { return 3 }))
+	fmt.Println("none", None[int]().GetOrFunc(func() int { return 1 }))
+	fmt.Println("some", Some(2).GetOrFunc(func() int { return 1 }))
+	fmt.Println("zero", Option[int]{}.GetOrFunc(func() int { return 3 }))
 	// Output:
 	// none 1
 	// some 2
 	// zero 3
 }
 func ExampleOption_GetOr() {
-	fmt.Println("none", option.None[int]().GetOr(1))
-	fmt.Println("some", option.Some(2).GetOr(1))
-	fmt.Println("zero", option.Option[int]{}.GetOr(3))
+	fmt.Println("none", None[int]().GetOr(1))
+	fmt.Println("some", Some(2).GetOr(1))
+	fmt.Println("zero", Option[int]{}.GetOr(3))
 	// Output:
 	// none 1
 	// some 2
 	// zero 3
 }
 func ExampleOption_GetOrZero() {
-	fmt.Println("none", option.None[int]().GetOrZero())
-	fmt.Println("some", option.Some(1).GetOrZero())
-	fmt.Println("zero", option.Option[int]{}.GetOrZero())
+	fmt.Println("none", None[int]().GetOrZero())
+	fmt.Println("some", Some(1).GetOrZero())
+	fmt.Println("zero", Option[int]{}.GetOrZero())
 	// Output:
 	// none 0
 	// some 1
 	// zero 0
 }
 func ExampleOption_GetNilable() {
-	fmt.Println("none", option.None[int]().GetNilable())
-	fmt.Printf("some %v\n", *option.Some("1").GetNilable())
-	fmt.Println("zero", option.Option[int]{}.GetNilable())
+	fmt.Println("none", None[int]().GetNilable())
+	fmt.Printf("some %v\n", *Some("1").GetNilable())
+	fmt.Println("zero", Option[int]{}.GetNilable())
 	// Output:
 	// none <nil>
 	// some 1
@@ -219,61 +218,101 @@ func TestIsZero(t *testing.T) {
 	})
 }
 func TestNilable(t *testing.T) {
-	require.Equal(t, None[string](), Nilable((*string)(nil)))
+	require.Equal(t, Option[string]{}, Nilable((*string)(nil)))
 	var value = "123"
 	require.Equal(t, Some[string]("123"), Nilable(&value))
 }
-func TestSomeOrNone(t *testing.T) {
-	var refsome = 0
-	var someable = []any{
-		&refsome,
-		1,
-		time.Now(),
-		true,
-	}
-	for i := range someable {
-		t.Run(fmt.Sprintln(someable[i]), func(t *testing.T) {
-			require.True(t, SomeOrNone(someable[i]).IsSome())
-		})
-	}
-	var noneable = []any{
+
+func TestSomeOrZero_zeroable(t *testing.T) {
+	var zeroable = []any{
 		nil,
 		0,
-		time.Time{},
-		false,
+		[]int(nil),
 		(*bool)(nil),
+		time.Time{},
+		Option[string]{},
+		bool(false),
+		int(0),
+		int8(0),
+		int16(0),
+		int32(0),
+		int64(0),
+		uint(0),
+		uint8(0),
+		uint16(0),
+		uint32(0),
+		uint64(0),
+		string(""),
+		float32(0),
+		float64(0),
+		[]bool(nil),
+		[]int(nil),
+		[]int8(nil),
+		[]int16(nil),
+		[]int32(nil),
+		[]int64(nil),
+		[]uint(nil),
+		[]uint8(nil),
+		[]uint16(nil),
+		[]uint32(nil),
+		[]uint64(nil),
+		[]string(nil),
+		[]float32(nil),
+		[]float64(nil),
 	}
-
-	for i := range noneable {
-		t.Run(fmt.Sprintln(noneable[i]), func(t *testing.T) {
-			require.True(t, SomeOrNone(noneable[i]).IsNone())
+	for i := range zeroable {
+		t.Run(fmt.Sprintf("zero from %T %v\n", zeroable[i], zeroable[i]), func(t *testing.T) {
+			actual := SomeOrZero(zeroable[i])
+			require.True(t, actual.IsZero())
 		})
 	}
 }
-func TestSomeOrZero(t *testing.T) {
+func TestSomeOrZero_someable(t *testing.T) {
+	var value = 0
+	var someable = []any{
+		&value,
+		1,
+		time.Now(),
+		true,
+		Some(123),
+	}
+	for i := range someable {
+		t.Run(fmt.Sprintf("some from %T %v\n", someable[i], someable[i]), func(t *testing.T) {
+			require.True(t, SomeOrZero(someable[i]).IsSome())
+		})
+	}
+}
+func TestSomeOrNone_someable(t *testing.T) {
 	var refsome = 0
 	var someable = []any{
 		&refsome,
 		1,
 		time.Now(),
 		true,
+		Some(123),
 	}
 	for i := range someable {
-		t.Run(fmt.Sprintln(someable[i]), func(t *testing.T) {
-			require.True(t, SomeOrZero(someable[i]).IsSome())
+		t.Run(fmt.Sprintf("some from %T %v\n", someable[i], someable[i]), func(t *testing.T) {
+			require.True(t, SomeOrNone(someable[i]).IsSome())
 		})
 	}
+}
+func TestSomeOrZero_noneable(t *testing.T) {
+	var nilsubtype json.RawMessage
 	var noneable = []any{
 		nil,
 		0,
-		time.Time{},
 		false,
+		[]int(nil),
+		nilsubtype,
 		(*bool)(nil),
+		time.Time{},
+		Option[int]{},
 	}
 
 	for i := range noneable {
-		t.Run(fmt.Sprintln(noneable[i]), func(t *testing.T) {
-			require.True(t, SomeOrZero(noneable[i]).IsZero())
+		t.Run(fmt.Sprintf("none from %T %v\n", noneable[i], noneable[i]), func(t *testing.T) {
+			require.True(t, SomeOrNone(noneable[i]).IsNone())
 		})
 	}
 }
@@ -313,11 +352,10 @@ func TestJSON(t *testing.T) {
 	})
 }
 func TestOneOf(t *testing.T) {
-	require.Equal(t, None[int](), OneOf[int]())
+	require.Equal(t, Option[int]{}, OneOf[int]())
 	require.Equal(t, None[int](), OneOf(None[int]()))
-	require.Equal(t, Some(1), OneOf(Some(1)))
-	require.Equal(t, Some(1), OneOf(Some(1), None[int](), Some(2)))
-	require.Equal(t, Some(1), OneOf(None[int](), Some(1), None[int]()))
+	require.Equal(t, Some(1), OneOf(Option[int]{}, Some(1), None[int]()))
+	require.Equal(t, None[int](), OneOf(Option[int]{}, None[int](), Some(1)))
 }
 func TestPickOf(t *testing.T) {
 	require.Equal(t, ([]int)(nil), PickOf[int]())
@@ -348,6 +386,66 @@ func TestGoString(t *testing.T) {
 		{`option.Option[string]{}`, Option[string]{}},
 	}
 	for i := range cases {
-		require.Equal(t, cases[i].want, cases[i].value.GoString())
+		require.Equal(t, cases[i].want, fmt.Sprintf("%#v", cases[i].value))
 	}
+}
+func TestEqual(t *testing.T) {
+	cases := [...]struct {
+		hint        string
+		expected    bool
+		left, right Option[int]
+	}{
+		{"zero == zero", true,
+			Option[int]{}, Option[int]{}},
+		{"zero != none", false,
+			Option[int]{}, None[int]()},
+		{"zero != some", false,
+			Option[int]{}, Some[int](1)},
+
+		{"none != zero", false,
+			None[int](), Option[int]{}},
+		{"none == none", true,
+			None[int](), None[int]()},
+		{"none != some", false,
+			None[int](), Some[int](1)},
+
+		{"some != zero", false,
+			Some[int](1), Option[int]{}},
+		{"some != none", false,
+			Some[int](1), None[int]()},
+		{"some == some", true,
+			Some[int](1), Some[int](1)},
+		{"some != some", false,
+			Some[int](1), Some[int](2)},
+	}
+	for i := range cases {
+		t.Run(cases[i].hint, func(t *testing.T) {
+			actual := Equal(cases[i].left, cases[i].right)
+			require.Equal(t, cases[i].expected, actual)
+		})
+	}
+}
+func TestEqualFunc(t *testing.T) {
+	var fn = func(l []string, r string) bool {
+		for _, v := range l {
+			if v == r {
+				return true
+			}
+		}
+		return false
+	}
+	t.Run("==", func(t *testing.T) {
+		left := Some([]string{"foo", "bar"})
+		right := Some("bar")
+
+		actual := EqualFunc(left, right, fn)
+		require.True(t, actual)
+	})
+	t.Run("!=", func(t *testing.T) {
+		left := Some([]string{"foo", "bar"})
+		right := Some("buz")
+
+		actual := EqualFunc(left, right, fn)
+		require.False(t, actual)
+	})
 }

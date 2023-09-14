@@ -12,7 +12,7 @@
 //		fmt.Println(some.IsZero()) // false
 //
 //      // Zero value definition.
-//      var zero = option.Value{}
+//      var zero = option.Option{}
 //		fmt.Println(some.IsSome()) // false
 //		fmt.Println(some.IsNone()) // false
 //		fmt.Println(some.IsZero()) // true
@@ -55,49 +55,30 @@ func None[T any]() Option[T] {
 }
 func Nilable[T any](v *T) Option[T] {
 	if v == nil {
-		return None[T]()
+		return Option[T]{}
 	}
 	return Some(*v)
 }
 
-// SomeOrZero returns some if the value is non zero and nil. Othrwise returns None
-//
-//	Example:
-//		log.Println(SomeOrNone(0)) // Option[int]{}
-//		log.Println(SomeOrNone(1)) // Some[int](1)
-//		log.Println(SomeOrNone((*string)(nil))) // Option[*string]{}
-//		ptr := "foo"
-//		log.Println(SomeOrNone(&ptr)) // Some[*string](foo)
+// SomeOrZero returns some if the value is non zero. Otherwise returns Zero.
 func SomeOrZero[T any](value T) Option[T] {
-	if v := SomeOrNone[T](value); v.IsSome() {
-		return v
+	if isZero(value) {
+		return Option[T]{}
 	}
-	return Option[T]{}
+	return Some(value)
 }
 
-// SomeOrNone returns some if the value is non zero and nil. Othrwise returns None
-//
-//	Example:
-//		log.Println(SomeOrNone(0)) // None[int]()
-//		log.Println(SomeOrNone(1)) // Some[int](1)
-//		log.Println(SomeOrNone((*string)(nil))) // None[*string]()
-//		ptr := "foo"
-//		log.Println(SomeOrNone(&ptr)) // Some[*string](foo)
+// SomeOrNone returns Some if the value is non zero. Otherwise returns None.
 func SomeOrNone[T any](value T) Option[T] {
-	if vv, ok := any(value).(Noneable); ok && vv.IsNone() {
-		return None[T]()
-	} else if vv, ok := any(value).(Zeroable); ok && vv.IsZero() {
-		return None[T]()
-	} else if rv := reflect.ValueOf(value); !rv.IsValid() || rv.IsZero() {
+	if isZero(value) {
 		return None[T]()
 	}
-
 	return Some(value)
 }
 
 // Get returns a value if it some, in other case panics.
 func (o Option[T]) Get() T {
-	if !o.IsSome() {
+	if o.IsZero() || o.IsNone() {
 		var caller string
 		if _, file, line, ok := runtime.Caller(1); ok {
 			file = strings.Replace(file, basepath, "", 1)
@@ -141,7 +122,7 @@ func (o Option[T]) GetOrFunc(getter func() T) T {
 	return o.element
 }
 func (o Option[T]) String() string {
-	if !o.IsSome() {
+	if o.IsZero() {
 		return ""
 	}
 	if s, ok := any(o.element).(fmt.Stringer); ok {
@@ -150,29 +131,23 @@ func (o Option[T]) String() string {
 	rv := reflect.ValueOf(o.element)
 	for rv.Kind() == reflect.Pointer {
 		rv = rv.Elem()
-		if s, ok := rv.Interface().(fmt.Stringer); ok {
-			return s.String()
-		}
 	}
 	return fmt.Sprintf("%v", rv.Interface())
 }
 func (o Option[T]) GoString() string {
+	if o.IsZero() {
+		return fmt.Sprintf("option.Option[%T]{}", o.element)
+	}
 	if o.IsNone() {
 		return fmt.Sprintf("option.None[%T]()", o.element)
 	}
-	if o.IsSome() {
-		return fmt.Sprintf("option.Some[%T](%#v)", o.element, o.element)
-	}
-	return fmt.Sprintf("option.Option[%T]{}", o.element)
+	return fmt.Sprintf("option.Some[%T](%#v)", o.element, o.element)
 }
 
 // MarshalJSON is a implementation of the json.Marshaler.
 func (o Option[T]) MarshalJSON() (b []byte, err error) {
-	if o.IsZero() {
-		return nil, nil
-	}
-	if o.IsNone() {
-		return json.Marshal(nil)
+	if o.IsZero() || o.IsNone() {
+		return []byte("null"), nil
 	}
 	return json.Marshal(o.element)
 }
@@ -180,18 +155,18 @@ func (o Option[T]) MarshalJSON() (b []byte, err error) {
 // UnmarshalJSON is a implementation of the json.Unmarshaler.
 func (o *Option[T]) UnmarshalJSON(b []byte) (err error) {
 	if b == nil {
-		return
+		return nil
 	}
 	if bytes.Equal(b, []byte("null")) {
 		o.defined = true
-		return
+		return nil
 	}
 	if err = json.Unmarshal(b, &o.element); err != nil {
-		return
+		return err
 	}
 	o.valued = true
 	o.defined = true
-	return
+	return nil
 }
 
 // IsNone returns a true if value is some.
@@ -207,4 +182,100 @@ func (o Option[T]) IsNone() bool {
 // IsZero returns a true if value is zero.
 func (o Option[T]) IsZero() bool {
 	return !o.defined
+}
+func isZero(value any) bool {
+	switch v := value.(type) {
+	case Zeroable:
+		return v.IsZero()
+	case bool:
+		return !v
+	case string:
+		return v == ""
+	case
+		int, int8, int16, int32, int64,
+		uint, uint8, uint16, uint32, uint64,
+		float32, float64, complex64, complex128:
+		return isZeroNumber(v)
+	case
+		[]bool, []string,
+		[]int, []int8, []int16, []int32, []int64,
+		[]uint, []uint8, []uint16, []uint32, []uint64,
+		[]float32, []float64, []complex64, []complex128:
+		return isZeroSlice(v)
+	default:
+		rv := reflect.ValueOf(value)
+		return !rv.IsValid() || rv.IsZero()
+	}
+}
+func isZeroNumber(value any) bool {
+	switch v := value.(type) {
+	case int:
+		return v == 0
+	case int8:
+		return v == 0
+	case int16:
+		return v == 0
+	case int32:
+		return v == 0
+	case int64:
+		return v == 0
+	case uint:
+		return v == 0
+	case uint8:
+		return v == 0
+	case uint16:
+		return v == 0
+	case uint32:
+		return v == 0
+	case uint64:
+		return v == 0
+	case float32:
+		return v == 0
+	case float64:
+		return v == 0
+	case complex64:
+		return v == 0
+	case complex128:
+		return v == 0
+	default:
+		return false
+	}
+}
+func isZeroSlice(value any) bool {
+	switch v := value.(type) {
+	case []bool:
+		return v == nil
+	case []string:
+		return v == nil
+	case []int:
+		return v == nil
+	case []int8:
+		return v == nil
+	case []int16:
+		return v == nil
+	case []int32:
+		return v == nil
+	case []int64:
+		return v == nil
+	case []uint:
+		return v == nil
+	case []uint8:
+		return v == nil
+	case []uint16:
+		return v == nil
+	case []uint32:
+		return v == nil
+	case []uint64:
+		return v == nil
+	case []float32:
+		return v == nil
+	case []float64:
+		return v == nil
+	case []complex64:
+		return v == nil
+	case []complex128:
+		return v == nil
+	default:
+		return false
+	}
 }
