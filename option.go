@@ -22,20 +22,21 @@ package option
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
+
+	jsoniter "github.com/json-iterator/go"
 )
 
 type (
 	Option[T any] struct {
-		element T
-		valued  bool
-		defined bool
+		value   T
+		notNone bool
+		notZero bool
 	}
 	Zeroable interface{ IsZero() bool }
 	Someable interface{ IsSome() bool }
@@ -48,10 +49,10 @@ var (
 )
 
 func Some[T any](v T) Option[T] {
-	return Option[T]{element: v, valued: true, defined: true}
+	return Option[T]{value: v, notNone: true, notZero: true}
 }
 func None[T any]() Option[T] {
-	return Option[T]{defined: true}
+	return Option[T]{notZero: true}
 }
 func Nilable[T any](v *T) Option[T] {
 	if v == nil {
@@ -76,6 +77,22 @@ func SomeOrNone[T any](value T) Option[T] {
 	return Some(value)
 }
 
+// PointerOrZero returns Some if the value is non zero. Otherwise returns None.
+func PointerOrZero[T any](value *T) Option[T] {
+	if value == nil {
+		return Option[T]{}
+	}
+	return Some(*value)
+}
+
+// PointerOrNone returns Some if the value is non zero. Otherwise returns None.
+func PointerOrNone[T any](value *T) Option[T] {
+	if value == nil {
+		return None[T]()
+	}
+	return Some(*value)
+}
+
 // Get returns a value if it some, in other case panics.
 func (o Option[T]) Get() T {
 	if o.IsZero() || o.IsNone() {
@@ -86,17 +103,25 @@ func (o Option[T]) Get() T {
 		}
 		panic(fmt.Errorf("option: %T is none in %s", o, caller))
 	}
-	return o.element
+	return o.value
+}
+func (o Option[T]) Pointer() *T {
+	if !o.notNone {
+		return nil
+	}
+	var cp = o.value
+	return &cp
 }
 
 // GetNilable returns the nil value if the option is none.
 // Pointer is refers to a copy of the origin value,
 // so that means any changes to the pointer don't affect the value of the option.
+// Deprecated: use Pointer method
 func (o Option[T]) GetNilable() *T {
-	if !o.valued {
+	if !o.notNone {
 		return nil
 	}
-	var cp = o.element
+	var cp = o.value
 	return &cp
 }
 
@@ -108,27 +133,27 @@ func (o Option[T]) GetOrZero() T {
 
 // GetOr returns the value if the option is none.
 func (o Option[T]) GetOr(value T) T {
-	if !o.valued {
+	if !o.notNone {
 		return value
 	}
-	return o.element
+	return o.value
 }
 
 // GetOrFunc retunrs value from getter if the option is none
 func (o Option[T]) GetOrFunc(getter func() T) T {
-	if !o.valued {
+	if !o.notNone {
 		return getter()
 	}
-	return o.element
+	return o.value
 }
 func (o Option[T]) String() string {
 	if o.IsZero() {
 		return ""
 	}
-	if s, ok := any(o.element).(fmt.Stringer); ok {
+	if s, ok := any(o.value).(fmt.Stringer); ok {
 		return s.String()
 	}
-	rv := reflect.ValueOf(o.element)
+	rv := reflect.ValueOf(o.value)
 	for rv.Kind() == reflect.Pointer {
 		rv = rv.Elem()
 	}
@@ -136,12 +161,40 @@ func (o Option[T]) String() string {
 }
 func (o Option[T]) GoString() string {
 	if o.IsZero() {
-		return fmt.Sprintf("option.Option[%T]{}", o.element)
+		return fmt.Sprintf("option.Option[%T]{}", o.value)
 	}
 	if o.IsNone() {
-		return fmt.Sprintf("option.None[%T]()", o.element)
+		return fmt.Sprintf("option.None[%T]()", o.value)
 	}
-	return fmt.Sprintf("option.Some[%T](%#v)", o.element, o.element)
+	return fmt.Sprintf("option.Some[%T](%#v)", o.value, o.value)
+}
+
+func (o Option[T]) MustGetJSON() []byte {
+	if o.IsZero() {
+		return nil
+	}
+	if o.IsNone() {
+		return []byte("null")
+	}
+	var b, err = jsoniter.Marshal(o.value)
+	if err != nil {
+		panic(err)
+	}
+	return b
+}
+func (o *Option[T]) MustSetJSON(b []byte) {
+	if b == nil {
+		return
+	}
+	if bytes.Equal(b, []byte("null")) {
+		o.notZero = true
+		return
+	}
+	if err := jsoniter.Unmarshal(b, &o.value); err != nil {
+		panic(err)
+	}
+	o.notNone = true
+	o.notZero = true
 }
 
 // MarshalJSON is a implementation of the json.Marshaler.
@@ -149,7 +202,7 @@ func (o Option[T]) MarshalJSON() (b []byte, err error) {
 	if o.IsZero() || o.IsNone() {
 		return []byte("null"), nil
 	}
-	return json.Marshal(o.element)
+	return jsoniter.Marshal(o.value)
 }
 
 // UnmarshalJSON is a implementation of the json.Unmarshaler.
@@ -158,30 +211,30 @@ func (o *Option[T]) UnmarshalJSON(b []byte) (err error) {
 		return nil
 	}
 	if bytes.Equal(b, []byte("null")) {
-		o.defined = true
+		o.notZero = true
 		return nil
 	}
-	if err = json.Unmarshal(b, &o.element); err != nil {
+	if err = jsoniter.Unmarshal(b, &o.value); err != nil {
 		return err
 	}
-	o.valued = true
-	o.defined = true
+	o.notNone = true
+	o.notZero = true
 	return nil
 }
 
 // IsNone returns a true if value is some.
 func (o Option[T]) IsSome() bool {
-	return o.defined && o.valued
+	return o.notZero && o.notNone
 }
 
 // IsNone returns a true if value is none.
 func (o Option[T]) IsNone() bool {
-	return o.defined && !o.valued
+	return o.notZero && !o.notNone
 }
 
 // IsZero returns a true if value is zero.
 func (o Option[T]) IsZero() bool {
-	return !o.defined
+	return !o.notZero
 }
 func isZero(value any) bool {
 	switch v := value.(type) {

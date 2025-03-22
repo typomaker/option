@@ -37,13 +37,6 @@ value.GetOrZero() // always returns value, if undefined or null then zero value.
 value.GetOrFunc(func() string {return "fallback"}) // returns a value if defined not null. otherwise, returns the result of the passed function.
 ```
 
-### Nilable value.
-```go
-var value *string 
-var optional = option.Nilable(value) // If value is not nil, then returns Some[string](*value), otherwise None[string]().
-value = optional.GetNilable() // returns &value is some, otherwise returns nil.
-```
-
 ### Convert value to optional.
 SomeOrNone function returns `Some[T](...)` for non zero and not nil value, otherwise returns `None[T]()`
 ```go

@@ -7,20 +7,9 @@ import (
 	. "github.com/typomaker/option"
 )
 
-func BenchmarkNilableInt(b *testing.B) {
-	var some Option[int]
-	var zero Option[int]
-	var ref = int(1)
-	for j := 0; j < b.N; j++ {
-		some = Nilable(&ref)
-		zero = Nilable((*int)(nil))
-	}
-	_ = some
-	_ = zero
-}
 func BenchmarkSomeOrZeroZeroable(b *testing.B) {
-	var some Option[Time]
-	var zero Option[Time]
+	var some Option[Option[time.Time]]
+	var zero Option[Option[time.Time]]
 	for j := 0; j < b.N; j++ {
 		some = SomeOrZero(None[time.Time]())
 		zero = SomeOrZero(Option[time.Time]{})
@@ -77,13 +66,4 @@ func BenchmarkSomeOrZeroInt16(b *testing.B) {
 	}
 	_ = some
 	_ = zero
-}
-func BenchmarkIsSome(b *testing.B) {
-	var some = Some(1)
-	var d1, d2 bool
-	for i := 0; i < b.N; i++ {
-		d1 = IsSome(some)
-	}
-	_ = d1
-	_ = d2
 }

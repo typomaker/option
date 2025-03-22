@@ -1,16 +1,21 @@
-package option_test
+package option
 
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"runtime"
 	"testing"
 	"time"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/require"
-	. "github.com/typomaker/option"
 )
 
+func TestMain(m *testing.M) {
+	jsoniter.ConfigDefault = jsoniter.ConfigCompatibleWithStandardLibrary
+	os.Exit(m.Run())
+}
 func ExampleOption_states() {
 	var value Option[string]
 	fmt.Println("value is zero, same as undefined:", value.IsZero())
@@ -47,36 +52,6 @@ func ExampleSomeOrZero() {
 	// option.Some[int](1)
 	// option.Option[*string]{}
 	// option.Some[string]("123123")
-}
-func ExampleOneOf() {
-	var value1 = Option[int]{}
-	var value2 = Some[int](1)
-	var value3 = Some[int](2)
-
-	fmt.Printf("%#v", OneOf(value1, value2, value3))
-
-	// Output:
-	// option.Some[int](1)
-}
-func ExampleGetOf() {
-	var value1 = Option[int]{}
-	var value2 = Some[int](1)
-	var value3 = Some[int](2)
-
-	fmt.Printf("%#v", GetOf(value1, value2, value3))
-
-	// Output:
-	// 1
-}
-func ExamplePickOf() {
-	var value1 = Option[int]{}
-	var value2 = Some[int](1)
-	var value3 = Some[int](2)
-
-	fmt.Printf("%#v", PickOf(value1, value2, value3))
-
-	// Output:
-	// []int{1, 2}
 }
 func ExampleOption_GetOrFunc() {
 	fmt.Println("none", None[int]().GetOrFunc(func() int { return 1 }))
@@ -137,84 +112,6 @@ func TestGet(t *testing.T) {
 			o.Get()
 		})
 		require.Equal(t, 1, o.Get())
-	})
-}
-func TestIsNone(t *testing.T) {
-	t.Run("zero", func(t *testing.T) {
-		var vv = []Noneable{
-			None[any](),
-			None[any](),
-			Option[any]{},
-		}
-		require.False(t, IsNone(vv...))
-	})
-	t.Run("none", func(t *testing.T) {
-		var vv = []Noneable{
-			None[any](),
-			None[any](),
-			None[any](),
-		}
-		require.True(t, IsNone(vv...))
-	})
-	t.Run("some", func(t *testing.T) {
-		var vv = []Noneable{
-			None[any](),
-			None[any](),
-			Some[any](1),
-		}
-		require.False(t, IsNone(vv...))
-	})
-}
-func TestIsSome(t *testing.T) {
-	t.Run("zero", func(t *testing.T) {
-		var vv = []Someable{
-			Some[any](""),
-			Some[any](0),
-			Option[any]{},
-		}
-		require.False(t, IsSome(vv...))
-	})
-	t.Run("none", func(t *testing.T) {
-		var vv = []Someable{
-			Some[any](""),
-			Some[any](0),
-			None[any](),
-		}
-		require.False(t, IsSome(vv...))
-	})
-	t.Run("some", func(t *testing.T) {
-		var vv = []Someable{
-			Some[any](""),
-			Some[any](0),
-			Some[any](1),
-		}
-		require.True(t, IsSome(vv...))
-	})
-}
-func TestIsZero(t *testing.T) {
-	t.Run("zero", func(t *testing.T) {
-		var vv = []Zeroable{
-			Option[any]{},
-			Option[any]{},
-			Option[any]{},
-		}
-		require.True(t, IsZero(vv...))
-	})
-	t.Run("none", func(t *testing.T) {
-		var vv = []Zeroable{
-			Option[any]{},
-			Option[any]{},
-			None[any](),
-		}
-		require.False(t, IsZero(vv...))
-	})
-	t.Run("some", func(t *testing.T) {
-		var vv = []Zeroable{
-			Option[any]{},
-			Option[any]{},
-			Some[any](0),
-		}
-		require.False(t, IsZero(vv...))
 	})
 }
 func TestNilable(t *testing.T) {
@@ -316,6 +213,7 @@ func TestSomeOrZero_noneable(t *testing.T) {
 		})
 	}
 }
+
 func TestJSON(t *testing.T) {
 	t.Run("marshal none", func(t *testing.T) {
 		var o = None[int]()
@@ -350,26 +248,6 @@ func TestJSON(t *testing.T) {
 		require.True(t, o.IsSome())
 		require.Equal(t, 1, o.Get())
 	})
-}
-func TestOneOf(t *testing.T) {
-	require.Equal(t, Option[int]{}, OneOf[int]())
-	require.Equal(t, None[int](), OneOf(None[int]()))
-	require.Equal(t, Some(1), OneOf(Option[int]{}, Some(1), None[int]()))
-	require.Equal(t, None[int](), OneOf(Option[int]{}, None[int](), Some(1)))
-}
-func TestPickOf(t *testing.T) {
-	require.Equal(t, ([]int)(nil), PickOf[int]())
-	require.Equal(t, ([]int)(nil), PickOf(None[int]()))
-	require.Equal(t, []int{1}, PickOf(Some(1)))
-	require.Equal(t, []int{1, 2}, PickOf(Some(1), None[int](), Some(2)))
-	require.Equal(t, []int{1}, PickOf(None[int](), Some(1), None[int]()))
-}
-func TestGetOne(t *testing.T) {
-	require.Equal(t, 0, GetOf[int]())
-	require.Equal(t, 0, GetOf(None[int]()))
-	require.Equal(t, 1, GetOf(Some(1)))
-	require.Equal(t, 1, GetOf(None[int](), Some(1), None[int](), Some(2)))
-	require.Equal(t, 1, GetOf(None[int](), Some(1), None[int]()))
 }
 func TestGoString(t *testing.T) {
 	cases := []struct {
