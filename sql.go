@@ -76,7 +76,7 @@ func (it *Option[T]) Scan(value any) (err error) {
 		return err
 	case *[]byte, *[]float64, *[]float32, *[]int64, *[]int32, *[]string, *[][]byte, *[]bool:
 		if err = pq.Array(dst).Scan(value); err == nil {
-			it.notZero, it.notNone = true, true
+			it.none, it.some = true, true
 		}
 		return err
 	}

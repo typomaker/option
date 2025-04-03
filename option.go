@@ -36,9 +36,9 @@ import (
 
 type (
 	Option[T any] struct {
-		value   T
-		notNone bool
-		notZero bool
+		value T
+		some  bool
+		none  bool
 	}
 	Zeroable interface{ IsZero() bool }
 	Someable interface{ IsSome() bool }
@@ -51,10 +51,10 @@ var (
 )
 
 func Some[T any](v T) Option[T] {
-	return Option[T]{value: v, notNone: true, notZero: true}
+	return Option[T]{some: true, value: v}
 }
 func None[T any]() Option[T] {
-	return Option[T]{notZero: true}
+	return Option[T]{none: true}
 }
 func Nilable[T any](v *T) Option[T] {
 	if v == nil {
@@ -97,7 +97,7 @@ func PointerOrNone[T any](value *T) Option[T] {
 
 // Get returns a value if it some, in other case panics.
 func (o Option[T]) Get() T {
-	if o.IsZero() || o.IsNone() {
+	if !o.IsSome() {
 		var caller string
 		if _, file, line, ok := runtime.Caller(1); ok {
 			file = strings.Replace(file, basepath, "", 1)
@@ -108,7 +108,7 @@ func (o Option[T]) Get() T {
 	return o.value
 }
 func (o Option[T]) Pointer() *T {
-	if !o.notNone {
+	if !o.IsSome() {
 		return nil
 	}
 	var cp = o.value
@@ -120,7 +120,7 @@ func (o Option[T]) Pointer() *T {
 // so that means any changes to the pointer don't affect the value of the option.
 // Deprecated: use Pointer method
 func (o Option[T]) GetNilable() *T {
-	if !o.notNone {
+	if !o.IsSome() {
 		return nil
 	}
 	var cp = o.value
@@ -135,7 +135,7 @@ func (o Option[T]) GetOrZero() T {
 
 // GetOr returns the value if the option is none.
 func (o Option[T]) GetOr(value T) T {
-	if !o.notNone {
+	if !o.IsSome() {
 		return value
 	}
 	return o.value
@@ -143,7 +143,7 @@ func (o Option[T]) GetOr(value T) T {
 
 // GetOrFunc retunrs value from getter if the option is none
 func (o Option[T]) GetOrFunc(getter func() T) T {
-	if !o.notNone {
+	if !o.IsSome() {
 		return getter()
 	}
 	return o.value
@@ -183,34 +183,6 @@ func (o Option[T]) GoString() string {
 	return fmt.Sprintf("option.Some[%T](%#v)", o.value, o.value)
 }
 
-func (o Option[T]) MustGetJSON() []byte {
-	if o.IsZero() {
-		return nil
-	}
-	if o.IsNone() {
-		return []byte("null")
-	}
-	var b, err = jsoniter.Marshal(o.value)
-	if err != nil {
-		panic(err)
-	}
-	return b
-}
-func (o *Option[T]) MustSetJSON(b []byte) {
-	if b == nil {
-		return
-	}
-	if bytes.Equal(b, []byte("null")) {
-		o.notZero = true
-		return
-	}
-	if err := jsoniter.Unmarshal(b, &o.value); err != nil {
-		panic(err)
-	}
-	o.notNone = true
-	o.notZero = true
-}
-
 // MarshalJSON is a implementation of the json.Marshaler.
 func (o Option[T]) MarshalJSON() (b []byte, err error) {
 	if o.IsZero() || o.IsNone() {
@@ -225,30 +197,29 @@ func (o *Option[T]) UnmarshalJSON(b []byte) (err error) {
 		return nil
 	}
 	if bytes.Equal(b, []byte("null")) {
-		o.notZero = true
+		o.none = true
 		return nil
 	}
 	if err = jsoniter.Unmarshal(b, &o.value); err != nil {
 		return err
 	}
-	o.notNone = true
-	o.notZero = true
+	o.some = true
 	return nil
 }
 
 // IsNone returns a true if value is some.
 func (o Option[T]) IsSome() bool {
-	return o.notZero && o.notNone
+	return o.some
 }
 
 // IsNone returns a true if value is none.
 func (o Option[T]) IsNone() bool {
-	return o.notZero && !o.notNone
+	return o.none
 }
 
 // IsZero returns a true if value is zero.
 func (o Option[T]) IsZero() bool {
-	return !o.notZero
+	return !o.none && !o.some
 }
 func isZero(value any) bool {
 	switch v := value.(type) {
