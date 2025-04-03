@@ -8,7 +8,6 @@ import (
 	"os"
 	"runtime"
 	"testing"
-	"time"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/require"
@@ -32,28 +31,6 @@ func ExampleOption_states() {
 	// value is zero, same as undefined: true
 	// value is none, defined and same as null: true
 	// value is some, defined and not null: true
-}
-func ExampleSomeOrNone() {
-	fmt.Printf("%#v\n", SomeOrNone(0))
-	fmt.Printf("%#v\n", SomeOrNone(1))
-	fmt.Printf("%#v\n", SomeOrNone((*string)(nil)))
-	fmt.Printf("%#v\n", SomeOrNone("123123"))
-	// Output:
-	// option.None[int]()
-	// option.Some[int](1)
-	// option.None[*string]()
-	// option.Some[string]("123123")
-}
-func ExampleSomeOrZero() {
-	fmt.Printf("%#v\n", SomeOrZero(0))
-	fmt.Printf("%#v\n", SomeOrZero(1))
-	fmt.Printf("%#v\n", SomeOrZero((*string)(nil)))
-	fmt.Printf("%#v\n", SomeOrZero("123123"))
-	// Output:
-	// option.Option[int]{}
-	// option.Some[int](1)
-	// option.Option[*string]{}
-	// option.Some[string]("123123")
 }
 func ExampleOption_GetOrFunc() {
 	fmt.Println("none", None[int]().GetOrFunc(func() int { return 1 }))
@@ -82,15 +59,6 @@ func ExampleOption_GetOrZero() {
 	// some 1
 	// zero 0
 }
-func ExampleOption_GetNilable() {
-	fmt.Println("none", None[int]().GetNilable())
-	fmt.Printf("some %v\n", *Some("1").GetNilable())
-	fmt.Println("zero", Option[int]{}.GetNilable())
-	// Output:
-	// none <nil>
-	// some 1
-	// zero <nil>
-}
 func TestCompatible(t *testing.T) {
 	require.Implements(t, (*json.Unmarshaler)(nil), &Option[any]{})
 	require.Implements(t, (*json.Marshaler)(nil), &Option[any]{})
@@ -116,106 +84,6 @@ func TestGet(t *testing.T) {
 		require.Equal(t, 1, o.Get())
 	})
 }
-func TestNilable(t *testing.T) {
-	require.Equal(t, Option[string]{}, Nilable((*string)(nil)))
-	var value = "123"
-	require.Equal(t, Some[string]("123"), Nilable(&value))
-}
-
-func TestSomeOrZero_zeroable(t *testing.T) {
-	var zeroable = []any{
-		nil,
-		0,
-		[]int(nil),
-		(*bool)(nil),
-		time.Time{},
-		Option[string]{},
-		bool(false),
-		int(0),
-		int8(0),
-		int16(0),
-		int32(0),
-		int64(0),
-		uint(0),
-		uint8(0),
-		uint16(0),
-		uint32(0),
-		uint64(0),
-		string(""),
-		float32(0),
-		float64(0),
-		[]bool(nil),
-		[]int(nil),
-		[]int8(nil),
-		[]int16(nil),
-		[]int32(nil),
-		[]int64(nil),
-		[]uint(nil),
-		[]uint8(nil),
-		[]uint16(nil),
-		[]uint32(nil),
-		[]uint64(nil),
-		[]string(nil),
-		[]float32(nil),
-		[]float64(nil),
-	}
-	for i := range zeroable {
-		t.Run(fmt.Sprintf("zero from %T %v\n", zeroable[i], zeroable[i]), func(t *testing.T) {
-			actual := SomeOrZero(zeroable[i])
-			require.True(t, actual.IsZero())
-		})
-	}
-}
-func TestSomeOrZero_someable(t *testing.T) {
-	var value = 0
-	var someable = []any{
-		&value,
-		1,
-		time.Now(),
-		true,
-		Some(123),
-	}
-	for i := range someable {
-		t.Run(fmt.Sprintf("some from %T %v\n", someable[i], someable[i]), func(t *testing.T) {
-			require.True(t, SomeOrZero(someable[i]).IsSome())
-		})
-	}
-}
-func TestSomeOrNone_someable(t *testing.T) {
-	var refsome = 0
-	var someable = []any{
-		&refsome,
-		1,
-		time.Now(),
-		true,
-		Some(123),
-	}
-	for i := range someable {
-		t.Run(fmt.Sprintf("some from %T %v\n", someable[i], someable[i]), func(t *testing.T) {
-			require.True(t, SomeOrNone(someable[i]).IsSome())
-		})
-	}
-}
-func TestSomeOrZero_noneable(t *testing.T) {
-	var nilsubtype json.RawMessage
-	var noneable = []any{
-		nil,
-		0,
-		false,
-		[]int(nil),
-		nilsubtype,
-		(*bool)(nil),
-		time.Time{},
-		Option[int]{},
-	}
-
-	for i := range noneable {
-		t.Run(fmt.Sprintf("none from %T %v\n", noneable[i], noneable[i]), func(t *testing.T) {
-			require.True(t, SomeOrNone(noneable[i]).IsNone())
-		})
-	}
-}
-
 func TestJSON(t *testing.T) {
 	t.Run("marshal none", func(t *testing.T) {
 		var o = None[int]()

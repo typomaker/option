@@ -56,44 +56,6 @@ func Some[T any](v T) Option[T] {
 func None[T any]() Option[T] {
 	return Option[T]{none: true}
 }
-func Nilable[T any](v *T) Option[T] {
-	if v == nil {
-		return Option[T]{}
-	}
-	return Some(*v)
-}
-
-// SomeOrZero returns some if the value is non zero. Otherwise returns Zero.
-func SomeOrZero[T any](value T) Option[T] {
-	if isZero(value) {
-		return Option[T]{}
-	}
-	return Some(value)
-}
-
-// SomeOrNone returns Some if the value is non zero. Otherwise returns None.
-func SomeOrNone[T any](value T) Option[T] {
-	if isZero(value) {
-		return None[T]()
-	}
-	return Some(value)
-}
-
-// PointerOrZero returns Some if the value is non zero. Otherwise returns None.
-func PointerOrZero[T any](value *T) Option[T] {
-	if value == nil {
-		return Option[T]{}
-	}
-	return Some(*value)
-}
-
-// PointerOrNone returns Some if the value is non zero. Otherwise returns None.
-func PointerOrNone[T any](value *T) Option[T] {
-	if value == nil {
-		return None[T]()
-	}
-	return Some(*value)
-}
 
 // Get returns a value if it some, in other case panics.
 func (o Option[T]) Get() T {
@@ -106,25 +68,6 @@ func (o Option[T]) Get() T {
 		panic(fmt.Errorf("option: %T is none in %s", o, caller))
 	}
 	return o.value
-}
-func (o Option[T]) Pointer() *T {
-	if !o.IsSome() {
-		return nil
-	}
-	var cp = o.value
-	return &cp
-}
-
-// GetNilable returns the nil value if the option is none.
-// Pointer is refers to a copy of the origin value,
-// so that means any changes to the pointer don't affect the value of the option.
-// Deprecated: use Pointer method
-func (o Option[T]) GetNilable() *T {
-	if !o.IsSome() {
-		return nil
-	}
-	var cp = o.value
-	return &cp
 }
 
 // GetOrZero returns the zero value if the option is none.
@@ -220,100 +163,4 @@ func (o Option[T]) IsNone() bool {
 // IsZero returns a true if value is zero.
 func (o Option[T]) IsZero() bool {
 	return !o.none && !o.some
-}
-func isZero(value any) bool {
-	switch v := value.(type) {
-	case Zeroable:
-		return v.IsZero()
-	case bool:
-		return !v
-	case string:
-		return v == ""
-	case
-		int, int8, int16, int32, int64,
-		uint, uint8, uint16, uint32, uint64,
-		float32, float64, complex64, complex128:
-		return isZeroNumber(v)
-	case
-		[]bool, []string,
-		[]int, []int8, []int16, []int32, []int64,
-		[]uint, []uint8, []uint16, []uint32, []uint64,
-		[]float32, []float64, []complex64, []complex128:
-		return isZeroSlice(v)
-	default:
-		rv := reflect.ValueOf(value)
-		return !rv.IsValid() || rv.IsZero()
-	}
-}
-func isZeroNumber(value any) bool {
-	switch v := value.(type) {
-	case int:
-		return v == 0
-	case int8:
-		return v == 0
-	case int16:
-		return v == 0
-	case int32:
-		return v == 0
-	case int64:
-		return v == 0
-	case uint:
-		return v == 0
-	case uint8:
-		return v == 0
-	case uint16:
-		return v == 0
-	case uint32:
-		return v == 0
-	case uint64:
-		return v == 0
-	case float32:
-		return v == 0
-	case float64:
-		return v == 0
-	case complex64:
-		return v == 0
-	case complex128:
-		return v == 0
-	default:
-		return false
-	}
-}
-func isZeroSlice(value any) bool {
-	switch v := value.(type) {
-	case []bool:
-		return v == nil
-	case []string:
-		return v == nil
-	case []int:
-		return v == nil
-	case []int8:
-		return v == nil
-	case []int16:
-		return v == nil
-	case []int32:
-		return v == nil
-	case []int64:
-		return v == nil
-	case []uint:
-		return v == nil
-	case []uint8:
-		return v == nil
-	case []uint16:
-		return v == nil
-	case []uint32:
-		return v == nil
-	case []uint64:
-		return v == nil
-	case []float32:
-		return v == nil
-	case []float64:
-		return v == nil
-	case []complex64:
-		return v == nil
-	case []complex128:
-		return v == nil
-	default:
-		return false
-	}
 }
