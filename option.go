@@ -29,6 +29,8 @@ import (
 	"strconv"
 	"strings"
 
+	"log/slog"
+
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -145,6 +147,18 @@ func (o Option[T]) GetOrFunc(getter func() T) T {
 		return getter()
 	}
 	return o.value
+}
+func (o Option[T]) LogValue() slog.Value {
+	if o.IsZero() {
+		return slog.GroupValue()
+	}
+	if o.IsNone() {
+		return slog.Value{}
+	}
+	if v, ok := any(o.value).(slog.LogValuer); ok {
+		return v.LogValue()
+	}
+	return slog.AnyValue(o.value)
 }
 func (o Option[T]) String() string {
 	if o.IsZero() {

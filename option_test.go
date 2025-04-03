@@ -1,8 +1,10 @@
 package option
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"runtime"
 	"testing"
@@ -326,4 +328,52 @@ func TestEqualFunc(t *testing.T) {
 		actual := EqualFunc(left, right, fn)
 		require.False(t, actual)
 	})
+}
+func TestLogValue(t *testing.T) {
+	b := bytes.Buffer{}
+	h := slog.NewJSONHandler(&b, &slog.HandlerOptions{
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			switch a.Key {
+			case "time", "level", "msg":
+				return slog.Attr{}
+			}
+			return a
+		},
+	})
+	t.Run("zero", func(t *testing.T) {
+		l := slog.New(h)
+		v := Option[string]{}
+		l.Info("foo", slog.Any("v", v))
+		require.JSONEq(t, `{}`, b.String())
+		b.Reset()
+	})
+	t.Run("none", func(t *testing.T) {
+		l := slog.New(h)
+		v := None[string]()
+		l.Info("foo", slog.Any("v", v))
+		require.JSONEq(t, `{"v":null}`, b.String())
+		b.Reset()
+	})
+	t.Run("some", func(t *testing.T) {
+		l := slog.New(h)
+		v := Some("bar")
+		l.Info("foo", slog.Any("v", v))
+		require.JSONEq(t, `{"v":"bar"}`, b.String())
+		b.Reset()
+	})
+	t.Run("implement log valuer", func(t *testing.T) {
+		l := slog.New(h)
+		v := Some(SlogValue{})
+		l.Info("foo", slog.Any("v", v))
+		require.JSONEq(t, `{"v":{"foo":"bar"}}`, b.String())
+		b.Reset()
+	})
+}
+
+type SlogValue struct{}
+
+func (SlogValue) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.Any("foo", "bar"),
+	)
 }
