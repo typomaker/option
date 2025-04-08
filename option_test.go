@@ -85,6 +85,12 @@ func TestGet(t *testing.T) {
 	})
 }
 func TestJSON(t *testing.T) {
+	t.Run("marshal zero", func(t *testing.T) {
+		var o = Option[int]{}
+		var b, err = o.MarshalJSON()
+		require.NoError(t, err)
+		require.Equal(t, []uint8(nil), b)
+	})
 	t.Run("marshal none", func(t *testing.T) {
 		var o = None[int]()
 		var b, err = o.MarshalJSON()

@@ -128,7 +128,10 @@ func (o Option[T]) GoString() string {
 
 // MarshalJSON is a implementation of the json.Marshaler.
 func (o Option[T]) MarshalJSON() (b []byte, err error) {
-	if o.IsZero() || o.IsNone() {
+	if o.IsZero() {
+		return nil, nil
+	}
+	if o.IsNone() {
 		return []byte("null"), nil
 	}
 	return jsoniter.Marshal(o.value)
