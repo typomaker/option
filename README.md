@@ -9,11 +9,6 @@ A generic value wrapper that adds two additional value representations:
 ## Usage
 ```go
 import "github.com/typomaker/option"
-```
-
-### Value initialization and checks.
-```go
-import "github.com/typomaker/option"
 // Some value defintion.
 var some = option.Some("foo")
 fmt.Println(some.IsSome()) // true
