@@ -66,7 +66,7 @@ func TestCompatible(t *testing.T) {
 func TestGet(t *testing.T) {
 	t.Run("zero", func(t *testing.T) {
 		_, _, line, _ := runtime.Caller(0)
-		require.PanicsWithError(t, "option: option.Option[int] is none in /option_test.go:"+fmt.Sprintf("%d", line+2), func() {
+		require.PanicsWithError(t, "option: option.Option[int] is zero in /option_test.go:"+fmt.Sprintf("%d", line+2), func() {
 			Option[int]{}.Get()
 		})
 	})

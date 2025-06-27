@@ -1,22 +1,25 @@
 //	Example:
-//      // Some value defintion.
-//		var some = option.Some("")
-//		fmt.Println(some.IsSome()) // true
-//		fmt.Println(some.IsNone()) // false
-//		fmt.Println(some.IsZero()) // false
+// 		import "github.com/typomaker/option"
+// 		// Some value defintion.
+// 		var some = option.Some("foo")
+// 		fmt.Println(some.IsSome()) // true
+// 		fmt.Println(some.GetOrZero()) // foo
+// 		fmt.Println(some.GetOr("bar")) // foo
+// 		fmt.Println(some.Get()) // foo
 //
-//      // None value definition.
-//      var none = option.None[string]()
-//		fmt.Println(some.IsSome()) // false
-//		fmt.Println(some.IsNone()) // true
-//		fmt.Println(some.IsZero()) // false
+// 		// None value definition.
+// 		var none = option.None[string]()
+// 		fmt.Println(none.IsNone()) // true
+// 		fmt.Println(none.GetOrZero()) // ""
+// 		fmt.Println(none.GetOr("bar")) // bar
+// 		fmt.Println(none.Get()) // panic
 //
-//      // Zero value definition.
-//      var zero = option.Option{}
-//		fmt.Println(some.IsSome()) // false
-//		fmt.Println(some.IsNone()) // false
-//		fmt.Println(some.IsZero()) // true
-//
+// 		// Zero value definition.
+// 		var zero = option.Option[string]{}
+//		fmt.Println(zero.IsZero()) // true
+// 		fmt.Println(zero.GetOrZero()) // ""
+// 		fmt.Println(zero.GetOr("bar")) // bar
+// 		fmt.Println(zero.Get()) // panic
 
 package option
 
@@ -59,15 +62,18 @@ func None[T any]() Option[T] {
 
 // Get returns a value if it some, in other case panics.
 func (o Option[T]) Get() T {
-	if !o.IsSome() {
-		var caller string
-		if _, file, line, ok := runtime.Caller(1); ok {
-			file = strings.Replace(file, basepath, "", 1)
-			caller = file + ":" + strconv.Itoa(line)
-		}
+	if o.IsSome() {
+		return o.value
+	}
+	var caller string
+	if _, file, line, ok := runtime.Caller(1); ok {
+		file = strings.Replace(file, basepath, "", 1)
+		caller = file + ":" + strconv.Itoa(line)
+	}
+	if o.IsNone() {
 		panic(fmt.Errorf("option: %T is none in %s", o, caller))
 	}
-	return o.value
+	panic(fmt.Errorf("option: %T is zero in %s", o, caller))
 }
 
 // GetOrZero returns the zero value if the option is none.
